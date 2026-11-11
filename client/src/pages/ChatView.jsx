@@ -1,10 +1,22 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { api } from '../api';
-import { Send, Lock, MessageSquare, AlertCircle, CheckCircle2 } from 'lucide-react';
+import { Send, Lock, MessageSquare, AlertCircle, CheckCircle2, Mail } from 'lucide-react';
+
+// Format a UTC ISO timestamp (from the DB) to the user's local time HH:MM
+function formatMsgTime(isoString) {
+  if (!isoString) return '';
+  const d = new Date(isoString);
+  if (isNaN(d.getTime())) return '';
+  return d.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true });
+}
+
+// Sweety Team system conversation (no real partnerId – purely a UI conversation)
+const SWEETY_TEAM_ID = 'sweety-team';
 
 export default function ChatView() {
   const { user, showToast } = useAuth();
+  const [activeConversation, setActiveConversation] = useState('partner'); // 'partner' | 'sweety-team'
   const [partner, setPartner] = useState(null);
   const [messages, setMessages] = useState([]);
   const [access, setAccess] = useState({ unlocked: true });
@@ -17,6 +29,7 @@ export default function ChatView() {
   const messagesEndRef = useRef(null);
 
   const isDoctor = user?.role === 'doctor';
+  const isSweetyTeam = activeConversation === 'sweety-team';
 
   const loadPartnerAndChat = async () => {
     try {
@@ -65,7 +78,7 @@ export default function ChatView() {
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages]);
+  }, [messages, activeConversation]);
 
   const handleSendMessage = async (e) => {
     e.preventDefault();
@@ -106,6 +119,9 @@ export default function ChatView() {
   };
 
   const isLocked = !access.unlocked;
+  const partnerInitials = partner?.name
+    ? partner.name.replace('Dr. ', '').split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase()
+    : (isDoctor ? 'CS' : 'AR');
 
   return (
     <div className="animate-fade-in">
@@ -115,8 +131,8 @@ export default function ChatView() {
           <p>Secure communication with your authorized care team.</p>
         </div>
 
-        <span className={`badge ${isLocked ? 'badge-locked' : 'badge-success'}`} style={{ padding: '8px 16px', fontSize: 12 }}>
-          {isLocked ? 'Chat locked' : 'Access active (demo)'}
+        <span className={`badge ${isLocked && !isSweetyTeam ? 'badge-locked' : 'badge-success'}`} style={{ padding: '8px 16px', fontSize: 12 }}>
+          {isSweetyTeam ? 'Read only' : (isLocked ? 'Chat locked' : 'Access active')}
         </span>
       </div>
 
@@ -128,39 +144,37 @@ export default function ChatView() {
           </div>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+            {/* Partner conversation */}
             <div
+              onClick={() => setActiveConversation('partner')}
               style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: 10,
-                padding: '10px 12px',
-                borderRadius: 12,
-                background: 'var(--teal2)',
-                cursor: 'pointer'
+                display: 'flex', alignItems: 'center', gap: 10,
+                padding: '10px 12px', borderRadius: 12, cursor: 'pointer',
+                background: activeConversation === 'partner' ? 'var(--teal2)' : 'transparent',
+                transition: 'background 0.15s ease'
               }}
             >
               <div className="avatar coral" style={{ width: 36, height: 36, fontSize: 13 }}>
-                {isDoctor ? 'CS' : 'AR'}
+                {partnerInitials}
               </div>
               <div style={{ minWidth: 0, flex: 1 }}>
                 <b style={{ fontSize: 12.5, display: 'block', textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap' }}>
-                  {partner?.name || (isDoctor ? 'Chaitanya Sivathmika' : 'Dr. Ananya Rao')}
+                  {partner?.name || (isDoctor ? 'Patient' : 'Dr. Ananya Rao')}
                 </b>
                 <div style={{ fontSize: 11, color: 'var(--muted)' }}>
-                  {isDoctor ? 'Patient account' : 'Endocrinologist'}
+                  {isDoctor ? 'Patient account' : 'Clinical Conversation'}
                 </div>
               </div>
             </div>
 
+            {/* Sweety Team conversation */}
             <div
+              onClick={() => setActiveConversation('sweety-team')}
               style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: 10,
-                padding: '10px 12px',
-                borderRadius: 12,
-                cursor: 'pointer',
-                opacity: 0.75
+                display: 'flex', alignItems: 'center', gap: 10,
+                padding: '10px 12px', borderRadius: 12, cursor: 'pointer',
+                background: activeConversation === 'sweety-team' ? 'var(--teal2)' : 'transparent',
+                transition: 'background 0.15s ease'
               }}
             >
               <div className="avatar teal" style={{ width: 36, height: 36, fontSize: 13 }}>
@@ -176,96 +190,150 @@ export default function ChatView() {
 
         {/* Right: Chat window */}
         <div style={{ display: 'flex', flexDirection: 'column', minHeight: 460 }}>
-          {/* Header */}
-          <div style={{ padding: '16px 22px', borderBottom: '1px solid var(--line)', display: 'flex', alignItems: 'center', gap: 12 }}>
-            <div className="avatar coral" style={{ width: 38, height: 38, fontSize: 14 }}>
-              {isDoctor ? 'CS' : 'AR'}
-            </div>
-            <div>
-              <b style={{ fontSize: 13.5, display: 'block' }}>
-                {partner?.name || 'Care Consultation'}
-              </b>
-              <div style={{ fontSize: 11, color: 'var(--muted)' }}>
-                {partner?.specialization || 'Clinical Conversation'} · Demo
+          {isSweetyTeam ? (
+            /* ── Sweety Team: read-only ── */
+            <>
+              <div style={{ padding: '16px 22px', borderBottom: '1px solid var(--line)', display: 'flex', alignItems: 'center', gap: 12 }}>
+                <div className="avatar teal" style={{ width: 38, height: 38, fontSize: 14 }}>ST</div>
+                <div>
+                  <b style={{ fontSize: 13.5, display: 'block' }}>Sweety Team</b>
+                  <div style={{ fontSize: 11, color: 'var(--muted)' }}>System messages · Read only</div>
+                </div>
+                <span className="badge badge-pending" style={{ marginLeft: 'auto' }}>Read only</span>
               </div>
-            </div>
-            <span className={`badge ${isLocked ? 'badge-locked' : 'badge-success'}`} style={{ marginLeft: 'auto' }}>
-              {isLocked ? 'Locked' : 'Authorized'}
-            </span>
-          </div>
 
-          {/* Messages Feed */}
-          <div style={{ flex: 1, padding: 22, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 10, background: '#fdfefe' }}>
-            {messages.map((m) => {
-              const isMine = m.sender_id === user?.id;
-              return (
-                <div
-                  key={m.id}
-                  style={{
-                    maxWidth: '75%',
-                    alignSelf: isMine ? 'flex-end' : 'flex-start',
-                    background: isMine ? '#e1f4f0' : '#f0f3f7',
-                    color: 'var(--ink)',
-                    borderRadius: 14,
-                    padding: '11px 15px',
-                    fontSize: 12.5,
-                    lineHeight: 1.6
-                  }}
-                >
-                  <div>{m.content}</div>
-                  <div style={{ fontSize: 9.5, color: '#7b8793', textAlign: 'right', marginTop: 4 }}>
-                    {new Date(m.created_at).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}
+              <div style={{ flex: 1, padding: 22, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 10, background: '#fdfefe' }}>
+                {/* Default contact message – always shown, never duplicated */}
+                <div style={{
+                  maxWidth: '78%', alignSelf: 'flex-start',
+                  background: '#f0f3f7', borderRadius: 14,
+                  padding: '14px 16px', fontSize: 12.5, lineHeight: 1.7
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6, fontWeight: 800, fontSize: 12, color: 'var(--teal)' }}>
+                    <Mail size={13} /> Sweety Team
+                  </div>
+                  <div>
+                    Contact{' '}
+                    <a href="mailto:bloodtracker@sweetyteam.in" style={{ color: 'var(--teal)', fontWeight: 700, textDecoration: 'underline' }}>
+                      bloodtracker@sweetyteam.in
+                    </a>{' '}
+                    for any queries.
+                  </div>
+                  <div style={{ fontSize: 9.5, color: '#7b8793', textAlign: 'right', marginTop: 6 }}>
+                    System message
                   </div>
                 </div>
-              );
-            })}
-            <div ref={messagesEndRef} />
-          </div>
-
-          {/* Compose / Locked Box */}
-          {isLocked ? (
-            <div style={{ padding: 18, borderTop: '1px solid var(--line)', background: '#fff' }}>
-              <div className="notice notice-warning" style={{ margin: '0 0 12px', fontSize: 11.5 }}>
-                Your consultation access is locked. You can request a follow-up; the doctor must approve a defined access period.
               </div>
-              <form onSubmit={handleFollowupSubmit}>
-                <div className="form-group" style={{ marginBottom: 10 }}>
-                  <label>Follow-up question</label>
-                  <textarea
-                    rows="2"
-                    placeholder="Describe what you need help with..."
-                    value={followupText}
-                    onChange={(e) => setFollowupText(e.target.value)}
-                    required
-                  />
+
+              {/* Input disabled for Sweety Team */}
+              <div style={{ padding: '14px 18px', borderTop: '1px solid var(--line)', background: '#f8fafc' }}>
+                <div className="notice notice-info" style={{ margin: 0, fontSize: 11.5 }}>
+                  🔒 This is a read-only system conversation. For support, email{' '}
+                  <a href="mailto:bloodtracker@sweetyteam.in" style={{ color: 'var(--teal)', fontWeight: 700 }}>
+                    bloodtracker@sweetyteam.in
+                  </a>.
                 </div>
-                <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-                  <button type="submit" className="btn-primary" disabled={submittingFollowup}>
-                    Request follow-up
-                  </button>
-                </div>
-              </form>
-            </div>
+              </div>
+            </>
           ) : (
-            <form onSubmit={handleSendMessage} style={{ display: 'flex', gap: 10, padding: 16, borderTop: '1px solid var(--line)', background: '#fff' }}>
-              <input
-                type="text"
-                placeholder="Write a message..."
-                value={inputText}
-                onChange={(e) => setInputText(e.target.value)}
-                style={{
-                  flex: 1,
-                  border: '1px solid var(--line)',
-                  borderRadius: 10,
-                  padding: '11px 14px',
-                  fontSize: 13,
-                  outline: 'none'
-                }}
-              />
-              <button type="submit" className="btn-primary" disabled={sending || !inputText.trim()} style={{ padding: '0 18px' }}>
-                Send ↗
-              </button>
-            </form>
+            /* ── Partner conversation ── */
+            <>
+              <div style={{ padding: '16px 22px', borderBottom: '1px solid var(--line)', display: 'flex', alignItems: 'center', gap: 12 }}>
+                <div className="avatar coral" style={{ width: 38, height: 38, fontSize: 14 }}>
+                  {partnerInitials}
+                </div>
+                <div>
+                  <b style={{ fontSize: 13.5, display: 'block' }}>
+                    {partner?.name || 'Care Consultation'}
+                  </b>
+                  <div style={{ fontSize: 11, color: 'var(--muted)' }}>
+                    {partner?.specialization || 'Clinical Conversation'}
+                  </div>
+                </div>
+                <span className={`badge ${isLocked ? 'badge-locked' : 'badge-success'}`} style={{ marginLeft: 'auto' }}>
+                  {isLocked ? 'Locked' : 'Authorized'}
+                </span>
+              </div>
+
+              {/* Messages */}
+              <div style={{ flex: 1, padding: 22, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 10, background: '#fdfefe' }}>
+                {loading ? (
+                  <div style={{ textAlign: 'center', color: 'var(--muted)', fontSize: 12.5, paddingTop: 40 }}>Loading messages…</div>
+                ) : messages.length === 0 ? (
+                  <div style={{ textAlign: 'center', color: 'var(--muted)', fontSize: 12.5, paddingTop: 40 }}>
+                    No messages yet. Start the conversation.
+                  </div>
+                ) : (
+                  messages.map((m) => {
+                    const isMine = m.sender_id === user?.id;
+                    return (
+                      <div
+                        key={m.id}
+                        style={{
+                          maxWidth: '75%',
+                          alignSelf: isMine ? 'flex-end' : 'flex-start',
+                          background: isMine ? '#e1f4f0' : '#f0f3f7',
+                          color: 'var(--ink)',
+                          borderRadius: 14,
+                          padding: '11px 15px',
+                          fontSize: 12.5,
+                          lineHeight: 1.6,
+                          animation: 'fadeIn 0.2s ease'
+                        }}
+                      >
+                        <div>{m.content}</div>
+                        <div style={{ fontSize: 9.5, color: '#7b8793', textAlign: 'right', marginTop: 4 }}>
+                          {formatMsgTime(m.created_at)}
+                        </div>
+                      </div>
+                    );
+                  })
+                )}
+                <div ref={messagesEndRef} />
+              </div>
+
+              {/* Compose or locked */}
+              {isLocked ? (
+                <div style={{ padding: 18, borderTop: '1px solid var(--line)', background: '#fff' }}>
+                  <div className="notice notice-warning" style={{ margin: '0 0 12px', fontSize: 11.5 }}>
+                    Your consultation access is locked. You can request a follow-up; the doctor must approve a defined access period.
+                  </div>
+                  <form onSubmit={handleFollowupSubmit}>
+                    <div className="form-group" style={{ marginBottom: 10 }}>
+                      <label>Follow-up question</label>
+                      <textarea
+                        rows="2"
+                        placeholder="Describe what you need help with..."
+                        value={followupText}
+                        onChange={(e) => setFollowupText(e.target.value)}
+                        required
+                      />
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+                      <button type="submit" className="btn-primary" disabled={submittingFollowup}>
+                        Request follow-up
+                      </button>
+                    </div>
+                  </form>
+                </div>
+              ) : (
+                <form onSubmit={handleSendMessage} style={{ display: 'flex', gap: 10, padding: 16, borderTop: '1px solid var(--line)', background: '#fff' }}>
+                  <input
+                    type="text"
+                    placeholder="Write a message..."
+                    value={inputText}
+                    onChange={(e) => setInputText(e.target.value)}
+                    style={{
+                      flex: 1, border: '1px solid var(--line)', borderRadius: 10,
+                      padding: '11px 14px', fontSize: 13, outline: 'none'
+                    }}
+                  />
+                  <button type="submit" className="btn-primary" disabled={sending || !inputText.trim()} style={{ padding: '0 18px' }}>
+                    Send ↗
+                  </button>
+                </form>
+              )}
+            </>
           )}
         </div>
       </section>
