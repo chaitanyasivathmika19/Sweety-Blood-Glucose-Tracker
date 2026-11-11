@@ -1,8 +1,8 @@
-const puppeteer = require('puppeteer-core');
+const path = require('path');
+const puppeteer = require(path.resolve(__dirname, '../server/node_modules/puppeteer-core'));
 const http = require('http');
 const fs = require('fs');
-const path = require('path');
-const jwt = require('jsonwebtoken');
+const jwt = require(path.resolve(__dirname, '../server/node_modules/jsonwebtoken'));
 
 const DIST_DIR = path.resolve(__dirname, '../client/dist');
 const SCREENSHOT_DIR = path.resolve(__dirname, '../screenshots');

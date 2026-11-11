@@ -24,24 +24,21 @@ export default function ChatView() {
       let targetPartnerId = null;
 
       if (isDoctor) {
-        // As doctor, find first authorized patient
         const patData = await api.getAuthorizedPatients();
         if (patData.patients?.length > 0) {
           setPartner(patData.patients[0]);
           targetPartnerId = patData.patients[0].id;
         }
       } else {
-        // As patient, find subscribed doctor
         const subData = await api.getMySubscription();
         if (subData.subscription) {
           setPartner({
             id: subData.subscription.doctor_id,
             name: subData.subscription.doctor_name,
-            specialization: subData.subscription.doctor_specialization || 'Consulting Physician'
+            specialization: subData.subscription.doctor_specialization || 'Endocrinologist'
           });
           targetPartnerId = subData.subscription.doctor_id;
         } else {
-          // fallback to first doctor in list
           const docsData = await api.getDoctors();
           if (docsData.doctors?.length > 0) {
             setPartner(docsData.doctors[0]);
@@ -111,124 +108,170 @@ export default function ChatView() {
   const isLocked = !access.unlocked;
 
   return (
-    <div>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 20, flexWrap: 'wrap', gap: 12 }}>
+    <div className="animate-fade-in">
+      <div className="welcome-banner">
         <div>
-          <h2 style={{ margin: '0 0 6px', fontSize: 22, fontWeight: 800 }}>
-            Care Conversations
-          </h2>
-          <p style={{ margin: 0, color: 'var(--muted)', fontSize: 13 }}>
-            Authenticated consultation messaging between patients and assigned clinical providers.
-          </p>
+          <h2>Care conversations</h2>
+          <p>Secure communication with your authorized care team.</p>
         </div>
 
-        <span className={`badge ${isLocked ? 'badge-locked' : 'badge-success'}`} style={{ padding: '8px 16px', fontSize: 13 }}>
-          {isLocked ? 'Chat Locked' : 'Access Active'}
+        <span className={`badge ${isLocked ? 'badge-locked' : 'badge-success'}`} style={{ padding: '8px 16px', fontSize: 12 }}>
+          {isLocked ? 'Chat locked' : 'Access active (demo)'}
         </span>
       </div>
 
-      <div className="card" style={{ padding: 0, overflow: 'hidden', minHeight: 520, display: 'flex', flexDirection: 'column' }}>
-        {/* Chat Header */}
-        <div style={{ padding: '16px 24px', borderBottom: '1px solid var(--line)', display: 'flex', alignItems: 'center', gap: 14 }}>
-          <div className="avatar coral" style={{ width: 44, height: 44, fontSize: 16 }}>
-            {partner?.name ? partner.name.split(' ').map(n => n[0]).join('').substring(0, 2) : 'DR'}
+      <section className="card" style={{ padding: 0, overflow: 'hidden', minHeight: 480, display: 'grid', gridTemplateColumns: '260px minmax(0, 1fr)' }}>
+        {/* Left: Conversations list */}
+        <div style={{ borderRight: '1px solid var(--line)', padding: 18, background: '#fafbfc' }}>
+          <div className="card-head" style={{ marginBottom: 14 }}>
+            <h3 style={{ fontSize: 14 }}>Conversations</h3>
           </div>
-          <div>
-            <b style={{ fontSize: 15, display: 'block' }}>{partner?.name || 'Care Team'}</b>
-            <div style={{ fontSize: 12, color: 'var(--muted)' }}>
-              {partner?.specialization || (isDoctor ? 'Authorized Patient' : 'Consulting Doctor')} · {access.reason || 'Consultation channel'}
-            </div>
-          </div>
-        </div>
 
-        {/* Messages Body */}
-        <div style={{ flex: 1, padding: 24, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 12, background: '#fafbfc' }}>
-          {messages.map((m) => {
-            const isMine = m.sender_id === user?.id;
-            return (
-              <div
-                key={m.id}
-                style={{
-                  maxWidth: '75%',
-                  alignSelf: isMine ? 'flex-end' : 'flex-start',
-                  background: isMine ? '#e4f5f2' : '#ffffff',
-                  color: 'var(--ink)',
-                  border: isMine ? '1px solid #c2ece5' : '1px solid var(--line)',
-                  borderRadius: 14,
-                  padding: '12px 16px',
-                  boxShadow: '0 2px 8px rgba(0,0,0,0.03)'
-                }}
-              >
-                <div style={{ fontSize: 13, lineHeight: 1.6 }}>{m.content}</div>
-                <div style={{ fontSize: 10.5, color: 'var(--muted)', textAlign: 'right', marginTop: 4 }}>
-                  {new Date(m.created_at).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 10,
+                padding: '10px 12px',
+                borderRadius: 12,
+                background: 'var(--teal2)',
+                cursor: 'pointer'
+              }}
+            >
+              <div className="avatar coral" style={{ width: 36, height: 36, fontSize: 13 }}>
+                {isDoctor ? 'CS' : 'AR'}
+              </div>
+              <div style={{ minWidth: 0, flex: 1 }}>
+                <b style={{ fontSize: 12.5, display: 'block', textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap' }}>
+                  {partner?.name || (isDoctor ? 'Chaitanya Sivathmika' : 'Dr. Ananya Rao')}
+                </b>
+                <div style={{ fontSize: 11, color: 'var(--muted)' }}>
+                  {isDoctor ? 'Patient account' : 'Endocrinologist'}
                 </div>
               </div>
-            );
-          })}
-          <div ref={messagesEndRef} />
-        </div>
-
-        {/* Locked State vs Active Compose */}
-        {isLocked ? (
-          <div style={{ padding: 20, background: '#fff', borderTop: '1px solid var(--line)' }}>
-            <div className="notice notice-warning" style={{ margin: '0 0 14px' }}>
-              <Lock size={18} style={{ flexShrink: 0 }} />
-              <div>
-                <b>Consultation Chat Locked:</b> Normal consultation chat is reserved for active 2-month subscriptions.
-                You may submit a follow-up inquiry below for doctor review.
-              </div>
             </div>
 
-            <form onSubmit={handleFollowupSubmit} style={{ display: 'flex', gap: 10 }}>
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 10,
+                padding: '10px 12px',
+                borderRadius: 12,
+                cursor: 'pointer',
+                opacity: 0.75
+              }}
+            >
+              <div className="avatar teal" style={{ width: 36, height: 36, fontSize: 13 }}>
+                ST
+              </div>
+              <div style={{ minWidth: 0, flex: 1 }}>
+                <b style={{ fontSize: 12.5, display: 'block' }}>Sweety Team</b>
+                <div style={{ fontSize: 11, color: 'var(--muted)' }}>System messages</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Right: Chat window */}
+        <div style={{ display: 'flex', flexDirection: 'column', minHeight: 460 }}>
+          {/* Header */}
+          <div style={{ padding: '16px 22px', borderBottom: '1px solid var(--line)', display: 'flex', alignItems: 'center', gap: 12 }}>
+            <div className="avatar coral" style={{ width: 38, height: 38, fontSize: 14 }}>
+              {isDoctor ? 'CS' : 'AR'}
+            </div>
+            <div>
+              <b style={{ fontSize: 13.5, display: 'block' }}>
+                {partner?.name || 'Care Consultation'}
+              </b>
+              <div style={{ fontSize: 11, color: 'var(--muted)' }}>
+                {partner?.specialization || 'Clinical Conversation'} · Demo
+              </div>
+            </div>
+            <span className={`badge ${isLocked ? 'badge-locked' : 'badge-success'}`} style={{ marginLeft: 'auto' }}>
+              {isLocked ? 'Locked' : 'Authorized'}
+            </span>
+          </div>
+
+          {/* Messages Feed */}
+          <div style={{ flex: 1, padding: 22, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 10, background: '#fdfefe' }}>
+            {messages.map((m) => {
+              const isMine = m.sender_id === user?.id;
+              return (
+                <div
+                  key={m.id}
+                  style={{
+                    maxWidth: '75%',
+                    alignSelf: isMine ? 'flex-end' : 'flex-start',
+                    background: isMine ? '#e1f4f0' : '#f0f3f7',
+                    color: 'var(--ink)',
+                    borderRadius: 14,
+                    padding: '11px 15px',
+                    fontSize: 12.5,
+                    lineHeight: 1.6
+                  }}
+                >
+                  <div>{m.content}</div>
+                  <div style={{ fontSize: 9.5, color: '#7b8793', textAlign: 'right', marginTop: 4 }}>
+                    {new Date(m.created_at).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}
+                  </div>
+                </div>
+              );
+            })}
+            <div ref={messagesEndRef} />
+          </div>
+
+          {/* Compose / Locked Box */}
+          {isLocked ? (
+            <div style={{ padding: 18, borderTop: '1px solid var(--line)', background: '#fff' }}>
+              <div className="notice notice-warning" style={{ margin: '0 0 12px', fontSize: 11.5 }}>
+                Your consultation access is locked. You can request a follow-up; the doctor must approve a defined access period.
+              </div>
+              <form onSubmit={handleFollowupSubmit}>
+                <div className="form-group" style={{ marginBottom: 10 }}>
+                  <label>Follow-up question</label>
+                  <textarea
+                    rows="2"
+                    placeholder="Describe what you need help with..."
+                    value={followupText}
+                    onChange={(e) => setFollowupText(e.target.value)}
+                    required
+                  />
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+                  <button type="submit" className="btn-primary" disabled={submittingFollowup}>
+                    Request follow-up
+                  </button>
+                </div>
+              </form>
+            </div>
+          ) : (
+            <form onSubmit={handleSendMessage} style={{ display: 'flex', gap: 10, padding: 16, borderTop: '1px solid var(--line)', background: '#fff' }}>
               <input
                 type="text"
-                placeholder="Ask your follow-up clinical question..."
-                value={followupText}
-                onChange={(e) => setFollowupText(e.target.value)}
+                placeholder="Write a message..."
+                value={inputText}
+                onChange={(e) => setInputText(e.target.value)}
                 style={{
                   flex: 1,
-                  padding: '12px 16px',
-                  borderRadius: 10,
                   border: '1px solid var(--line)',
-                  fontSize: 13
+                  borderRadius: 10,
+                  padding: '11px 14px',
+                  fontSize: 13,
+                  outline: 'none'
                 }}
-                required
               />
-              <button
-                type="submit"
-                className="btn-primary"
-                disabled={submittingFollowup}
-              >
-                Request Follow-up
+              <button type="submit" className="btn-primary" disabled={sending || !inputText.trim()} style={{ padding: '0 18px' }}>
+                Send ↗
               </button>
             </form>
-          </div>
-        ) : (
-          <form onSubmit={handleSendMessage} style={{ padding: 18, background: '#fff', borderTop: '1px solid var(--line)', display: 'flex', gap: 10 }}>
-            <input
-              type="text"
-              placeholder="Type your message here..."
-              value={inputText}
-              onChange={(e) => setInputText(e.target.value)}
-              style={{
-                flex: 1,
-                padding: '12px 16px',
-                borderRadius: 10,
-                border: '1px solid #dfe5eb',
-                fontSize: 13.5
-              }}
-            />
-            <button
-              type="submit"
-              className="btn-primary"
-              disabled={sending || !inputText.trim()}
-              style={{ padding: '0 22px' }}
-            >
-              <Send size={16} /> Send
-            </button>
-          </form>
-        )}
+          )}
+        </div>
+      </section>
+
+      <div className="notice notice-info" style={{ marginTop: 18 }}>
+        Messages and access controls are server-enforced in PostgreSQL. Normal chat locks automatically when a 2-month subscription expires.
       </div>
     </div>
   );

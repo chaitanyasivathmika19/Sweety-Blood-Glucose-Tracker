@@ -28,13 +28,13 @@ export default function TopBar() {
   const isDoctor = user?.role === 'doctor';
 
   const initials = user?.name 
-    ? user.name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase()
-    : 'U';
+    ? user.name.replace('Dr. ', '').split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase()
+    : 'CS';
 
-  const handleRoleToggle = async (role) => {
-    if ((role === 'doctor' && !isDoctor) || (role === 'patient' && isDoctor)) {
-      await switchRole(role);
-      navigate(role === 'doctor' ? '/doctor' : '/');
+  const handleRoleToggle = async (targetRole) => {
+    if ((targetRole === 'doctor' && !isDoctor) || (targetRole === 'patient' && isDoctor)) {
+      await switchRole(targetRole);
+      navigate(targetRole === 'doctor' ? '/doctor' : '/');
     }
   };
 
@@ -46,17 +46,19 @@ export default function TopBar() {
       </div>
 
       <div className="top-actions">
-        {/* Quick Demo Role Switcher */}
-        <div className="role-pill" title="Quick switch between demo patient and doctor accounts">
+        {/* Role Switcher Pill */}
+        <div className="role-switch" title="Toggle role views for evaluation">
           <button
+            type="button"
             onClick={() => handleRoleToggle('patient')}
-            className={`role-btn ${!isDoctor ? 'active' : ''}`}
+            className={!isDoctor ? 'active' : ''}
           >
             Patient view
           </button>
           <button
+            type="button"
             onClick={() => handleRoleToggle('doctor')}
-            className={`role-btn ${isDoctor ? 'active' : ''}`}
+            className={isDoctor ? 'active' : ''}
           >
             Doctor view
           </button>
@@ -73,12 +75,12 @@ export default function TopBar() {
           {unreadCount > 0 && <span className="dot-badge" />}
         </button>
 
-        {/* Avatar */}
+        {/* User Avatar */}
         <div
           className={`avatar ${isDoctor ? 'coral' : 'teal'}`}
           onClick={() => navigate('/profile')}
           style={{ cursor: 'pointer' }}
-          title="Profile settings"
+          title={`${user?.name} · Click for Profile`}
         >
           {initials}
         </div>
