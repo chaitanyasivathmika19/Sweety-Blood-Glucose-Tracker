@@ -212,12 +212,15 @@ export default function SubscriptionsView() {
               </div>
 
               <div className="form-group" style={{ marginBottom: 16 }}>
-                <label>Payment screenshot (demo)</label>
-                <input type="file" accept="image/*" />
+                <label htmlFor="paymentImage">Upload image</label>
+                <input id="paymentImage" type="file" accept="image/*" />
+                <small style={{ fontSize: 11, color: 'var(--muted)', display: 'block', marginTop: 4 }}>
+                  Allowed formats: PNG, JPG, JPEG, WEBP. Restricted to image files only.
+                </small>
               </div>
 
-              <div className="notice notice-warning" style={{ fontSize: 11.5, margin: '0 0 16px' }}>
-                Status remains pending until an authorized reviewer confirms payment. Production systems verify the transaction before activation.
+              <div className="notice notice-warning" style={{ fontSize: 11.5, margin: '0 0 16px', lineHeight: 1.5 }}>
+                🔒 <b>Prototype Demo Mode:</b> Status remains pending until reviewed. Payments, transactions, and image uploads are simulated locally for demonstration and are not processed by a real financial gateway or uploaded to an external server.
               </div>
 
               <button
