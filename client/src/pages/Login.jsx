@@ -71,11 +71,6 @@ export default function Login() {
           </p>
         </div>
 
-        {/* Prototype Demo Notice */}
-        <div className="notice notice-info" style={{ fontSize: 11.5, margin: '0 0 16px', lineHeight: 1.5 }}>
-          ✦ <b>Prototype Demonstration:</b> Local session authentication. Choose your role below to explore the matching patient or doctor workspace.
-        </div>
-
         {/* Clear Role Selection Pill */}
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6, background: '#f1f5f9', padding: 4, borderRadius: 12, marginBottom: 18 }}>
           <button

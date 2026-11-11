@@ -51,11 +51,6 @@ export default function Register() {
           </p>
         </div>
 
-        {/* Prototype Demo Notice */}
-        <div className="notice notice-info" style={{ fontSize: 11.5, margin: '0 0 16px', lineHeight: 1.5 }}>
-          ✦ <b>Prototype Demonstration:</b> Local session registration. Select your role below to initialize a new patient or doctor profile.
-        </div>
-
         {error && (
           <div className="notice notice-error" style={{ marginBottom: 16 }}>
             {error}
