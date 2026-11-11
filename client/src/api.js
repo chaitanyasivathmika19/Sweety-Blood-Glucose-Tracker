@@ -1,4 +1,5 @@
-const API_BASE = import.meta.env.VITE_API_BASE_URL || '/api';
+const rawBase = import.meta.env.VITE_API_BASE_URL || '/api';
+const API_BASE = rawBase === '/api' ? '/api' : (rawBase.endsWith('/api') ? rawBase : `${rawBase.replace(/\/+$/, '')}/api`);
 
 function getToken() {
   return localStorage.getItem('sweety_token');
