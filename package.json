@@ -2,16 +2,17 @@
   "name": "sweety-blood-glucose-tracker",
   "version": "1.0.0",
   "description": "Sweety — Blood Glucose Tracker & Doctor Consultation Platform",
-  "main": "server/src/server.js",
   "scripts": {
-    "install:all": "npm install --prefix server && npm install --prefix client",
+    "dev": "concurrently \"npm run dev:server\" \"npm run dev:client\"",
     "dev:server": "npm run dev --prefix server",
     "dev:client": "npm run dev --prefix client",
-    "dev": "concurrently \"npm run dev:server\" \"npm run dev:client\"",
+    "dev:phase3": "npm --prefix Phase-3-Project-Implementation run dev",
+    "test": "npm test --prefix server && npm test --prefix client",
+    "test:phase3": "npm test --prefix Phase-3-Project-Implementation/server && npm test --prefix Phase-3-Project-Implementation/client",
+    "build": "npm run build --prefix client",
     "build:client": "npm run build --prefix client",
-    "start": "npm start --prefix server",
     "seed": "npm run seed --prefix server",
-    "test": "npm test --prefix server && npm test --prefix client"
+    "install:all": "npm install --prefix server && npm install --prefix client"
   },
   "devDependencies": {
     "concurrently": "^9.1.2"

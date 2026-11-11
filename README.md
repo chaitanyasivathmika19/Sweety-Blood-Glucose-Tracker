@@ -2,314 +2,174 @@
 
 ![Sweety Banner](screenshots/03_patient_dashboard.png)
 
-> **Sweety** is a healthcare web platform that enables diabetes patients to record, monitor, and analyze daily blood glucose levels across four routine time slots while connecting them with verified endocrinologists and diabetologists through subscription-based consultation plans.
+> **Sweety** is a comprehensive, animated healthcare web platform designed for daily diabetes management, glucose logging across four clinical time slots, and doctor consultations with continuous care and subscription verification.
 
-Built with **React 18, Node.js, Express, and PostgreSQL**, Sweety implements both the mandatory **Kenpath Engineering Assignment** requirements and the broader **Phase 1 & Phase 2 Sweety Platform vision**.
-
----
-
-## 1. Project Objectives
-
-1. **Kenpath Engineering Mandatory Goals:**
-   - Real user authentication with `bcrypt` password hashing.
-   - Comprehensive CRUD operations on patient blood glucose readings across 4 mandatory daily slots (`Morning (fasting)`, `After breakfast`, `After lunch`, `After dinner`).
-   - Strict backend validation with exact error messages.
-   - Authoritative reporting: Daily, Month-to-date, and Previous-month relative to selected date.
-   - Pagination, Recharts interactive line charts, Docker Compose, automated Vitest/Supertest test suites, and React Testing Library frontend tests.
-
-2. **Sweety Healthcare Platform Vision:**
-   - Patient health dashboard with daily completion tracking (0/4 to 4/4).
-   - Interactive monthly calendar with view-only past date preservation.
-   - Strict 4-hour editing window rule enforced by server timestamp.
-   - Standard clinical CSV export (`Date, Time Slot, Glucose Value (mg/dL), Created At, Updated At`).
-   - Doctor discovery directory with specialization filtering and verified credential status.
-   - Three consultation plans (₹250, ₹400, ₹600) with **two calendar months validity**.
-   - Two-way notification system and automated daily slot reminder jobs.
-   - Consultation chat messaging with access locking upon expiry and doctor-reviewed follow-up requests.
-   - Secure payment verification workflow with reviewer audit logging.
+**GitHub Repository:** [https://github.com/chaitanyasivathmika19/Sweety-Blood-Glucose-Tracker](https://github.com/chaitanyasivathmika19/Sweety-Blood-Glucose-Tracker)  
+**Live UI/UX Prototype:** [https://chaitanyasivathmika19.github.io/Glucose-tracker-prototype/](https://chaitanyasivathmika19.github.io/Glucose-tracker-prototype/)  
+**Figma Prototype:** [https://patch-drift-73153514.figma.site/](https://patch-drift-73153514.figma.site/)  
 
 ---
 
-## 2. Features
+## Project Organization by Phases
 
-### Patient Portal
-- **Authentication**: JWT-based login, registration, and session management via HTTP-only cookies and Authorization headers.
-- **Daily Glucose Logging**: Record readings for Morning, Breakfast, Lunch, and Dinner.
-- **Real-Time Validation**:
-  - Empty input -> `"Please enter a glucose value."`
-  - Range < 40 or > 600 -> `"Value must be between 40 and 600 mg/dl."`
-  - Future dates -> `"Date cannot be in the future."`
-  - Duplicate slot -> `"You already have an [slot name] reading for this date."`
-  - Daily limit -> `"You can add only 4 readings per day."`
-  - Past dates -> Read-only (new readings restricted to current date).
-  - Editing window -> `"Editing is available only within 4 hours of recording."`
-- **Calendar & Trends**: Interactive calendar displaying completion dots, trends, and Recharts line visualizations.
-- **Reports & CSV**: Export clinical CSV files matching exact required column headers.
-- **Doctor Consultation**: Select doctors, choose consultation plans, view UPI QR code, and submit payment reference IDs.
-- **Care Messaging**: Two-way encrypted chat with consulting doctors.
-- **Notification Center**: Alerts for saved readings, reminders, payment reviews, and messages.
+The repository is organized into four documented phases:
 
-### Doctor Portal
-- **Doctor Dashboard**: Summary of authorized patients, pending payment submissions, and review items.
-- **Authorized Patients**: Read-only inspection of assigned patients' full glucose logs and daily trends.
-- **Payment Verification Queue**: Review transaction reference IDs and approve or reject subscriptions with mandatory rejection reasons.
-- **Follow-Up Management**: Review follow-up inquiries when a patient's normal chat is locked, granting temporary 48-hour access extensions.
+| Phase | Description | Key Deliverables |
+|---|---|---|
+| **Phase 1** | **Requirements & System Specifications** | [`Phase-1 SWEETY Documentation.docx`](Phase-1%20SWEETY%20Documentation.docx) — Detailed clinical workflow specs, doctor-patient authorization rules, reading constraints, and notification models. |
+| **Phase 2** | **Interactive UI/UX Prototype** | [`PHASE 2.docx`](PHASE%202.docx) & [Live GitHub Pages Prototype](https://chaitanyasivathmika19.github.io/Glucose-tracker-prototype/) — Interactive HTML5/CSS3/JavaScript prototype demonstrating the healthcare design system. |
+| **Phase 3** | **Full-Stack Project Implementation** | [`Phase-3-Project-Implementation/`](Phase-3-Project-Implementation/) — Production React 18 + Node.js Express + PostgreSQL application with 34 automated tests (29 backend + 5 frontend). |
+| **Phase 4** | **Deployment, Containerization & Hosting** | [`Phase-4-Deployment-and-Hosting/`](Phase-4-Deployment-and-Hosting/) — Render Blueprint (`render.yaml`), Docker Compose (`docker-compose.yml`), 15 genuine captured screenshots, and deployment guide. |
 
 ---
 
-## 3. Technology Stack
+## 1. Kenpath Engineering Assignment — Mandatory Features
 
-| Layer | Technologies |
-|---|---|
-| **Frontend** | React 18, Vite, React Router DOM 6, Recharts, Lucide React, Modern CSS System |
-| **Backend** | Node.js 20+, Express.js, JWT, bcryptjs, cookie-parser, multer, node-cron |
-| **Database** | PostgreSQL 15+ (`pg` connection pool with SSL) / `pg-mem` in-memory fallback |
-| **Testing** | Vitest, Supertest, React Testing Library, JSDOM |
-| **DevOps** | Docker, Docker Compose, Nginx, Render (`render.yaml` Blueprint) |
-
----
-
-## 4. Architecture & Directory Structure
-
-```
-Sweety-Blood-Glucose-Tracker/
-├── client/                     # React 18 + Vite frontend
-│   ├── src/
-│   │   ├── components/         # Sidebar, TopBar, ReadingModal, Toast
-│   │   ├── context/            # AuthContext (state, role switcher, toast)
-│   │   ├── pages/              # Dashboard, Tracking, Calendar, Analytics, Reports,
-│   │   │                       # Doctors, Subscriptions, Chat, Notifications,
-│   │   │                       # Profile, DoctorDashboard, DoctorPatients, DoctorRequests, Login, Register
-│   │   ├── __tests__/          # Frontend React Testing Library tests
-│   │   ├── api.js              # Centralized REST API client
-│   │   ├── index.css           # Healthcare design system & responsive styling
-│   │   └── main.jsx
-│   ├── Dockerfile
-│   └── vite.config.js
-├── server/                     # Node.js + Express backend
-│   ├── src/
-│   │   ├── database/           # db.js (PostgreSQL + pg-mem adapter), seed.js
-│   │   ├── middleware/         # auth.js (JWT authentication, role enforcement)
-│   │   ├── routes/             # auth, readings, doctors, subscriptions, chat, notifications
-│   │   ├── services/           # scheduler.js (daily slot reminders, subscription expiry)
-│   │   ├── app.js              # Express app configuration & middleware
-│   │   └── server.js           # Server entrypoint (PORT, bootstrap, 0.0.0.0 binding)
-│   ├── tests/                  # Backend tests (auth.test.js, readings.test.js, platform.test.js)
-│   └── Dockerfile
-├── database/
-│   └── schema.sql              # Normalized PostgreSQL DDL schema & indexes
-├── docs/                       # Comprehensive technical documentation
-│   ├── ARCHITECTURE.md
-│   ├── DATABASE_SCHEMA.md
-│   ├── API_SPECIFICATION.md
-│   ├── DEPLOYMENT_GUIDE.md
-│   └── DEMONSTRATION_SCRIPT.md
-├── screenshots/                # 15 genuine captured application screenshots
-├── scripts/                    # Automation and utility scripts
-├── docker-compose.yml          # Multi-container orchestration (PostgreSQL + API + Client)
-├── render.yaml                 # Render Infrastructure-as-Code Blueprint
-├── .env.example                # Environment variables template
-├── .gitignore
-├── README.md
-└── package.json                # Root workspace orchestration
-```
+1. **User Sign Up and Login:**
+   - Real authentication using `bcrypt` password hashing (passwords never stored in plaintext).
+   - Strict session/JWT token validation with HTTP-only cookies and Authorization headers.
+   - User data isolation: authenticated patients see only their own readings.
+2. **Glucose Reading CRUD & Validation:**
+   - 4 required daily slots: `Morning (fasting)`, `After breakfast`, `After lunch`, `After dinner`.
+   - Exact required validation error messages:
+     - Value is required -> `"Please enter a glucose value."`
+     - Value not whole number 40–600 -> `"Value must be between 40 and 600 mg/dl."`
+     - Duplicate slot -> `"You already have an [slot name] reading for this date."`
+     - Daily maximum (4 readings) -> `"You can add only 4 readings per day."`
+     - Future date -> `"Date cannot be in the future."`
+   - **Sweety Clinical Rules:**
+     - New readings restricted strictly to current date (past dates remain view-only).
+     - 4-Hour editing deadline: `"Editing is available only within 4 hours of recording."` (enforced by immutable server `created_at` timestamp).
+3. **Reports & Analytics:**
+   - Daily report (selected date readings, slots, highest, lowest, average rounded to 1 decimal, count).
+   - Month-to-date report (1st of month to selected date).
+   - Monthly report (entire preceding calendar month relative to selected date).
+   - Friendly empty states when no records exist.
+   - Clinical CSV export (`Date, Time Slot, Glucose Value (mg/dL), Created At, Updated At`).
+4. **Bonus Features Implemented:**
+   - Pagination on `GET /readings?page=1&limit=20`.
+   - Interactive Recharts monthly trend line chart with custom tooltips.
+   - `docker-compose.yml` multi-container setup with PostgreSQL, API, and frontend.
+   - Frontend React Testing Library tests for reading modal and validation.
+   - Automated background cron scheduler (`node-cron`) for daily slot reminders.
+   - Doctor portal for inspecting authorized patient glucose histories.
 
 ---
 
-## 5. Getting Started & Installation
+## 2. Technology Stack
 
-### Prerequisites
-- **Node.js** (v18 or higher recommended; v22 verified)
-- **npm** (v9 or higher)
-- **Git**
-- *(Optional)* PostgreSQL 14+ or Docker (the backend automatically falls back to high-fidelity in-memory PostgreSQL for zero-friction local development)
+- **Frontend:** React 18, Vite, React Router DOM 6, Recharts, Lucide React, Plus Jakarta Sans, Custom Healthcare CSS Animation System.
+- **Backend:** Node.js 20+, Express.js, JWT, bcryptjs, cookie-parser, multer, node-cron.
+- **Database:** PostgreSQL 15+ (`pg` connection pool with SSL) / `pg-mem` high-fidelity in-memory PostgreSQL engine for zero-friction local testing.
+- **Testing:** Vitest, Supertest, React Testing Library, JSDOM (34 automated tests passing).
+- **Deployment:** Render Blueprint (`render.yaml`), Docker Compose, Nginx.
 
-### Step 1: Clone Repository
+---
+
+## 3. Quick Start & Execution
+
+### Option A: From Repository Root (Convenience Scripts)
 ```bash
-git clone https://github.com/chaitanyasivathmika19/Sweety-Blood-Glucose-Tracker.git
-cd Sweety-Blood-Glucose-Tracker
-```
-
-### Step 2: Install Dependencies
-```bash
-# Install root, server, and client dependencies
+# 1. Install dependencies
 npm install
-npm run install:all
-```
 
-### Step 3: Configure Environment Variables
-Copy `.env.example` to `.env`:
-```bash
-cp .env.example .env
-```
-Default configuration:
-```env
-NODE_ENV=development
-PORT=5000
-DATABASE_URL=postgresql://postgres:postgres@localhost:5432/sweety_db
-JWT_SECRET=sweety_dev_secret_key_12345
-FRONTEND_URL=http://localhost:5173
-BACKEND_URL=http://localhost:5000
-APP_TIMEZONE=Asia/Kolkata
-```
-
-### Step 4: Run Database Seed (Optional)
-```bash
-npm run seed
-```
-
-### Step 5: Start Development Servers
-```bash
-# Concurrently start backend API (port 5000) and frontend (port 5173)
-npm run dev
-```
-- Open [http://localhost:5173](http://localhost:5173) in your browser.
-- Health Check: [http://localhost:5000/api/health](http://localhost:5000/api/health).
-
----
-
-## 6. Running Automated Tests
-
-The application includes automated tests covering authentication, glucose validation rules, reports, 4-hour editing window, ownership enforcement, and frontend modals:
-
-```bash
-# Run all tests (Server + Client)
+# 2. Run all unit and integration tests (34 tests)
 npm test
 
-# Run backend tests individually
-cd server && npm test
-
-# Run frontend React Testing Library tests individually
-cd client && npm test
+# 3. Start development servers concurrently
+npm run dev
+# - Frontend: http://localhost:5173
+# - Backend API: http://localhost:5000
+# - Health Check: http://localhost:5000/api/health
 ```
 
-### Test Coverage Highlights
-- **21 Backend API Tests**:
-  - Registration, password hashing, duplicate email handling.
-  - Glucose value boundaries (40 and 600).
-  - Out-of-bounds rejection (< 40 and > 600).
-  - Decimal value rejection.
-  - Empty value rejection.
-  - Future date rejection.
-  - Duplicate time slot rejection.
-  - Maximum 4 readings per day limit.
-  - Cross-user data isolation (User A cannot view User B).
-  - Daily, Month-to-date, Monthly report calculations.
-  - Standard clinical CSV export formatting.
-  - 4-hour editing window deadline enforcement.
-- **8 Platform Integration Tests**:
-  - Doctor-patient authorization.
-  - Subscription fee and duration verification.
-  - Payment approval / rejection workflows.
-  - Chat locking upon expiry and follow-up requests.
-- **5 Frontend Component Tests**:
-  - Reading form validation, range enforcement, and error rendering.
+### Option B: Inside Phase 3 Implementation Directory
+```bash
+cd Phase-3-Project-Implementation
+npm install --prefix server && npm install --prefix client
+npm test --prefix server   # Runs 29 backend tests
+npm test --prefix client   # Runs 5 frontend tests
+npm run dev
+```
 
----
-
-## 7. Demo Accounts & Walkthrough
-
-The development database is pre-seeded with sample patient records and verified doctor profiles:
-
-| Account Type | Email | Password | Role |
-|---|---|---|---|
-| **Demo Patient** | `patient@sweety.com` | `Password123!` | Patient (`Chaitanya Sivathmika`) |
-| **Demo Doctor** | `doctor@sweety.com` | `Password123!` | Doctor (`Dr. Ananya Rao - Endocrinologist`) |
-
-> **Tip:** You can also use the one-click **"Patient view"** / **"Doctor view"** switcher located in the top bar to instantly toggle views during evaluation.
-
----
-
-## 8. Consultation Plans & Business Rules
-
-| Plan Name | Total Fee | Consultation Frequency | Subscription Validity |
-|---|---|---|---|
-| **Essential Care** | **₹250** | Every 30 days | **2 calendar months** |
-| **Regular Care** | **₹400** | Every 15 days | **2 calendar months** |
-| **Frequent Care** | **₹600** | Every 7 days | **2 calendar months** |
-
-### Critical Business Logic
-1. **Total Fee Coverage:** The fee covers the entire 2-month subscription period, not an individual consultation session.
-2. **Consultation Frequency:** Determines how frequently clinical review checkpoints are scheduled during the active subscription.
-3. **Calendar Month Expiry:** Expiry dates are calculated by adding exactly two calendar months to the activation timestamp.
-4. **Authorized Access:** Doctors can only inspect glucose logs and reports of patients who have an active, verified subscription with them.
-5. **Chat Locking:** Normal consultation chat locks when a subscription expires. Patients can submit follow-up requests which doctors may approve for a temporary 48-hour access extension.
-
----
-
-## 9. Docker Deployment
-
-To launch the full stack with local PostgreSQL using Docker:
-
+### Option C: Multi-Container Docker Compose
 ```bash
 docker-compose up --build
+# - Frontend: http://localhost:3000
+# - Backend API: http://localhost:5000
+# - PostgreSQL: localhost:5432
 ```
-- Frontend: `http://localhost:3000`
-- Backend API: `http://localhost:5000`
-- PostgreSQL: `localhost:5432`
 
 ---
 
-## 10. Render Deployment Configuration
+## 4. Demo Credentials & Role Switching
 
-Sweety is ready for deployment on **Render**:
+Pre-seeded demonstration accounts for immediate recruiter review:
 
-1. Fork or push to your GitHub repository:
-   `https://github.com/chaitanyasivathmika19/Sweety-Blood-Glucose-Tracker`
-2. In Render, select **New +** -> **Blueprint** and connect the repository.
-3. Render automatically provisions:
-   - **PostgreSQL Database** (`sweety-postgres`)
-   - **Node.js Web Service** (`sweety-backend` on port `5000`, health path `/api/health`)
-   - **Static Site** (`sweety-frontend`, build command `npm install && npm run build`, publish dir `dist`, SPA rewrite rule `/* -> /index.html`)
-4. Refer to [docs/DEPLOYMENT_GUIDE.md](docs/DEPLOYMENT_GUIDE.md) for full instructions.
+| Role | Email | Password | Features Accessible |
+|---|---|---|---|
+| **Patient Account** | `patient@sweety.com` | `Password123!` | Dashboard, 4 Daily Slots, Trends, Calendar, Reports, CSV Export, Doctor Discovery, Subscriptions, Chat |
+| **Doctor Account** | `doctor@sweety.com` | `Password123!` | Doctor Overview, Authorized Patient Records, Payment Verification Queue, Consultation Chat |
 
-### Deployment URLs
-- **GitHub Repository**: [https://github.com/chaitanyasivathmika19/Sweety-Blood-Glucose-Tracker](https://github.com/chaitanyasivathmika19/Sweety-Blood-Glucose-Tracker)
-- **Live Frontend**: Render Static Site (Configured via `render.yaml`)
-- **Live Backend API**: Render Web Service (`/api/health`)
+> **Pro-Tip:** Use the one-click **"Patient view / Doctor view"** role switcher in the top bar to instantly toggle views without re-authenticating.
 
 ---
 
-## 11. Screenshots
+## 5. Automated Test Suite (34 Tests Passing)
+
+```
+Test Files  4 passed (4)
+     Tests  34 passed (34)
+```
+
+- **Backend Integration Tests (`server/tests/`):**
+  - `auth.test.js` (8 tests): Registration, password hashing, duplicate email rejection, invalid format, short password, valid login, invalid login, unauthorized route protection.
+  - `readings.test.js` (13 tests): Boundary values 40 and 600, out-of-range rejection, decimal rejection, future date rejection, duplicate slot rejection, 4-reading daily limit, cross-user data isolation, daily report statistics calculation, CSV export headers and formatting, 4-hour editing deadline enforcement.
+  - `platform.test.js` (8 tests): Consultation plans retrieval, payment submission, pending payment queue, chat locking while pending, payment approval & 2-month activation, chat message sending when active, notifications management, authorized doctor patient access vs unauthorized doctor rejection.
+- **Frontend Component Tests (`client/src/__tests__/ReadingModal.test.jsx`):**
+  - 5 tests: Modal rendering, empty value error, below 40 error, above 600 error, valid whole number submission.
+
+---
+
+## 6. Screenshots
 
 All screenshots are genuine captures of the running application:
 
-| Screen | Description |
-|---|---|
-| `screenshots/01_login.png` | Clean login with 1-click demo access |
-| `screenshots/02_register.png` | Patient / Doctor role registration |
-| `screenshots/03_patient_dashboard.png` | Patient overview with daily progress, trend chart, slots, and stats |
-| `screenshots/04_glucose_tracking.png` | Daily tracking slots with 4-hour countdown window |
-| `screenshots/05_tracking_calendar.png` | Interactive monthly completion calendar (0/4 to 4/4) |
-| `screenshots/06_analytics_charts.png` | Recharts trend visualization and summary analytics |
-| `screenshots/07_reports_export.png` | Report generator with CSV export preview |
-| `screenshots/08_doctor_discovery.png` | Doctor directory with specialization and experience |
-| `screenshots/09_subscriptions_payment.png` | Consultation plan selection & payment submission |
-| `screenshots/10_consultation_chat.png` | Real-time care conversations and follow-up requests |
-| `screenshots/11_notifications.png` | Two-way notification center |
-| `screenshots/12_doctor_dashboard.png` | Doctor portal overview with authorized patient activity |
-| `screenshots/13_doctor_patients.png` | Authorized patient records inspector |
-| `screenshots/14_doctor_payment_requests.png` | Payment verification queue with approve/reject workflow |
-| `screenshots/15_mobile_layout.png` | Responsive mobile dashboard layout |
+| Screen | File | Highlights |
+|---|---|---|
+| Login | `screenshots/01_login.png` | Clean login with 1-click demo patient & doctor buttons |
+| Registration | `screenshots/02_register.png` | Role-based registration with toggle pill |
+| Dashboard | `screenshots/03_patient_dashboard.png` | Daily completion progress (0–4/4), average, Recharts curve, and slots |
+| Glucose Tracking | `screenshots/04_glucose_tracking.png` | 4 daily slots with live 4-hour countdown window indicator |
+| Calendar | `screenshots/05_tracking_calendar.png` | Monthly calendar with completion dots (today, complete, partial) |
+| Analytics | `screenshots/06_analytics_charts.png` | Recharts interactive line chart with date range filters & stats |
+| Reports | `screenshots/07_reports_export.png` | Report preview table and standard clinical CSV export |
+| Doctor Discovery | `screenshots/08_doctor_discovery.png` | Doctor cards with specialization, ratings, and verified demo badge |
+| Subscriptions | `screenshots/09_subscriptions_payment.png` | ₹250, ₹400, ₹600 plans (2-month validity) with UPI QR & payment proof |
+| Care Messages | `screenshots/10_consultation_chat.png` | Real-time chat with auto-lock on expiry & follow-up request dialog |
+| Notifications | `screenshots/11_notifications.png` | Persistent alerts with unread badges & category icons |
+| Doctor Dashboard | `screenshots/12_doctor_dashboard.png` | Doctor overview with authorized patient feed and action items |
+| Patient Records | `screenshots/13_doctor_patients.png` | Inspection modal for authorized patient glucose histories |
+| Payment Queue | `screenshots/14_doctor_payment_requests.png`| Verification queue with approve & reject actions (reason required) |
+| Mobile View | `screenshots/15_mobile_layout.png` | Polished responsive mobile healthcare layout |
 
 ---
 
-## 12. Notes & Assumptions
+## 7. Render Deployment & Hosting
 
-### Assumptions
-- **Timezone**: Dates and daily slot caps are evaluated in the configured application timezone (`Asia/Kolkata` / Indian Standard Time by default) to guarantee that midnight rollover matches patient clinical expectations.
-- **Two Calendar Months Calculation**: Expiry adds exactly 2 calendar months to the activation date using JavaScript `date.setMonth(date.getMonth() + 2)`. If activated on August 31, it expires on October 31.
-- **Payment Verification**: Manual verification workflow is utilized to allow doctor confirmation of external UPI/bank transfers without third-party gateway credential dependencies.
-- **Zero-Friction Fallback**: When `DATABASE_URL` is configured (such as on Render or local PostgreSQL), the backend connects directly to real PostgreSQL via `pg`. When running locally without a PostgreSQL server, it seamlessly falls back to `pg-mem` high-fidelity PostgreSQL engine so that tests and local inspection run out-of-the-box.
+The repository includes a root [`render.yaml`](render.yaml) Blueprint:
 
-### What Could Be Improved With More Time
-- **Automated Payment Gateway**: Integration with Razorpay or Stripe Webhooks for instant real-time reconciliation.
-- **Push & SMS Alerts**: Integration with Firebase Cloud Messaging (FCM) or Twilio for WhatsApp/SMS medication and slot reminders.
-- **Continuous Glucose Monitor (CGM) Sync**: Bluetooth / HealthKit API sync with Freestyle Libre or Dexcom sensors.
-- **Redis Cache Layer**: Caching heavy historical aggregate reports with automated cache invalidation when a reading is created or updated.
+1. Go to [dashboard.render.com](https://dashboard.render.com) -> **New +** -> **Blueprint**.
+2. Connect `https://github.com/chaitanyasivathmika19/Sweety-Blood-Glucose-Tracker`.
+3. Render automatically provisions:
+   - **`sweety-postgres`**: Managed PostgreSQL database.
+   - **`sweety-backend`**: Node.js Express API on port 5000 (`/api/health`).
+   - **`sweety-frontend`**: Static Site building React bundle with client SPA routing (`/* -> /index.html`).
+4. Click **Apply**.
+5. See [`Phase-4-Deployment-and-Hosting/docs/DEPLOYMENT_GUIDE.md`](Phase-4-Deployment-and-Hosting/docs/DEPLOYMENT_GUIDE.md) for full instructions.
 
 ---
 
-## 13. License
+## 8. License
 
 This project is licensed under the MIT License — see the [LICENSE](LICENSE) file for details.
