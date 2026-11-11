@@ -121,6 +121,7 @@ export const api = {
   verifyPayment: (body) => request('/subscriptions/verify-payment', { method: 'POST', body: JSON.stringify(body) }),
 
   // Chat & Follow-ups
+  getConversations: () => request('/chat/conversations'),
   getMessages: (partnerId) => request(`/chat/messages/${partnerId}`),
   sendMessage: (body) => request('/chat/messages', { method: 'POST', body: JSON.stringify(body) }),
   submitFollowup: (body) => request('/chat/follow-up', { method: 'POST', body: JSON.stringify(body) }),

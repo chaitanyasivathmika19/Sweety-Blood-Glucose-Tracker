@@ -18,6 +18,7 @@ export default function ChatView() {
   const { user, showToast } = useAuth();
   const [activeConversation, setActiveConversation] = useState('partner'); // 'partner' | 'sweety-team'
   const [partner, setPartner] = useState(null);
+  const [conversations, setConversations] = useState([]);
   const [messages, setMessages] = useState([]);
   const [access, setAccess] = useState({ unlocked: true });
   const [inputText, setInputText] = useState('');
@@ -27,53 +28,41 @@ export default function ChatView() {
   const [loading, setLoading] = useState(true);
 
   const messagesEndRef = useRef(null);
+  const selectedPartnerId = useRef(null);
 
   const isDoctor = user?.role === 'doctor';
   const isSweetyTeam = activeConversation === 'sweety-team';
 
-  const loadPartnerAndChat = async () => {
+  const loadPartnerAndChat = async (silent = false) => {
     try {
-      setLoading(true);
-      let targetPartnerId = null;
-
-      if (isDoctor) {
-        const patData = await api.getAuthorizedPatients();
-        if (patData.patients?.length > 0) {
-          setPartner(patData.patients[0]);
-          targetPartnerId = patData.patients[0].id;
-        }
-      } else {
-        const subData = await api.getMySubscription();
-        if (subData.subscription) {
-          setPartner({
-            id: subData.subscription.doctor_id,
-            name: subData.subscription.doctor_name,
-            specialization: subData.subscription.doctor_specialization || 'Endocrinologist'
-          });
-          targetPartnerId = subData.subscription.doctor_id;
-        } else {
-          const docsData = await api.getDoctors();
-          if (docsData.doctors?.length > 0) {
-            setPartner(docsData.doctors[0]);
-            targetPartnerId = docsData.doctors[0].id;
-          }
-        }
-      }
-
-      if (targetPartnerId) {
-        const chatData = await api.getMessages(targetPartnerId);
+      if (!silent) setLoading(true);
+      const data = await api.getConversations();
+      const nextConversations = data.conversations || [];
+      setConversations(nextConversations);
+      const nextPartner = nextConversations.find((c) => c.id === selectedPartnerId.current) || nextConversations[0] || null;
+      if (nextPartner) {
+        selectedPartnerId.current = nextPartner.id;
+        setPartner(nextPartner);
+        const chatData = await api.getMessages(nextPartner.id);
         setMessages(chatData.messages || []);
         setAccess(chatData.access || { unlocked: false });
+      } else {
+        selectedPartnerId.current = null;
+        setPartner(null);
+        setMessages([]);
+        setAccess({ unlocked: false });
       }
     } catch (err) {
-      showToast('Failed to load consultation messages.');
+      if (!silent) showToast('Failed to load consultation messages.');
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
   };
 
   useEffect(() => {
     loadPartnerAndChat();
+    const interval = window.setInterval(() => loadPartnerAndChat(true), 3000);
+    return () => window.clearInterval(interval);
   }, [user]);
 
   useEffect(() => {
@@ -144,28 +133,25 @@ export default function ChatView() {
           </div>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-            {/* Partner conversation */}
-            <div
-              onClick={() => setActiveConversation('partner')}
-              style={{
-                display: 'flex', alignItems: 'center', gap: 10,
-                padding: '10px 12px', borderRadius: 12, cursor: 'pointer',
-                background: activeConversation === 'partner' ? 'var(--teal2)' : 'transparent',
-                transition: 'background 0.15s ease'
-              }}
-            >
-              <div className="avatar coral" style={{ width: 36, height: 36, fontSize: 13 }}>
-                {partnerInitials}
-              </div>
-              <div style={{ minWidth: 0, flex: 1 }}>
-                <b style={{ fontSize: 12.5, display: 'block', textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap' }}>
-                  {partner?.name || (isDoctor ? 'Patient' : 'Dr. Ananya Rao')}
-                </b>
-                <div style={{ fontSize: 11, color: 'var(--muted)' }}>
-                  {isDoctor ? 'Patient account' : 'Clinical Conversation'}
+            {conversations.map((conversation) => (
+              <div key={conversation.id} onClick={() => {
+                selectedPartnerId.current = conversation.id;
+                setPartner(conversation);
+                setActiveConversation('partner');
+                setLoading(true);
+                api.getMessages(conversation.id).then((chatData) => {
+                  setMessages(chatData.messages || []);
+                  setAccess(chatData.access || { unlocked: false });
+                }).catch(() => showToast('Failed to load consultation messages.')).finally(() => setLoading(false));
+              }} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', borderRadius: 12, cursor: 'pointer', background: activeConversation === 'partner' && partner?.id === conversation.id ? 'var(--teal2)' : 'transparent' }}>
+                <div className="avatar coral" style={{ width: 36, height: 36, fontSize: 13 }}>{conversation.name.split(' ').map((n) => n[0]).join('').substring(0, 2).toUpperCase()}</div>
+                <div style={{ minWidth: 0, flex: 1 }}>
+                  <b style={{ fontSize: 12.5, display: 'block', textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap' }}>{conversation.name}</b>
+                  <div style={{ fontSize: 11, color: 'var(--muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{conversation.latest_message || (isDoctor ? 'Patient account' : conversation.specialization)}</div>
                 </div>
+                {conversation.latest_message_at && <time style={{ fontSize: 9, color: 'var(--muted)' }}>{formatMsgTime(conversation.latest_message_at)}</time>}
               </div>
-            </div>
+            ))}
 
             {/* Sweety Team conversation */}
             <div
@@ -293,7 +279,9 @@ export default function ChatView() {
               </div>
 
               {/* Compose or locked */}
-              {isLocked ? (
+              {!partner ? (
+                <div style={{ padding: 22, color: 'var(--muted)', textAlign: 'center' }}>No authorized care conversations are available yet.</div>
+              ) : isLocked ? (
                 <div style={{ padding: 18, borderTop: '1px solid var(--line)', background: '#fff' }}>
                   <div className="notice notice-warning" style={{ margin: '0 0 12px', fontSize: 11.5 }}>
                     Your consultation access is locked. You can request a follow-up; the doctor must approve a defined access period.

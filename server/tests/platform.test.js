@@ -157,6 +157,39 @@ describe('Sweety Platform Consultations, Payments, Chat & Notifications Tests', 
     expect(getRes.body.messages.length).toBe(1);
   });
 
+  it('lists shared authorized conversations, delivers doctor replies, and rejects unrelated users', async () => {
+    const patientList = await request(app)
+      .get('/api/chat/conversations')
+      .set('Authorization', `Bearer ${patientToken}`);
+    const doctorList = await request(app)
+      .get('/api/chat/conversations')
+      .set('Authorization', `Bearer ${doctorToken}`);
+    expect(patientList.status).toBe(200);
+    expect(doctorList.status).toBe(200);
+    expect(patientList.body.conversations.map(c => c.id)).toContain(doctorId);
+    expect(doctorList.body.conversations.map(c => c.id)).toContain(patientId);
+    expect(doctorList.body.conversations.find(c => c.id === patientId).latest_message)
+      .toBe('Hello doctor, my subscription is now active!');
+
+    const reply = await request(app)
+      .post('/api/chat/messages')
+      .set('Authorization', `Bearer ${doctorToken}`)
+      .send({ receiver_id: patientId, content: 'Doctor reply persisted' });
+    expect(reply.status).toBe(201);
+    const history = await request(app)
+      .get(`/api/chat/messages/${doctorId}`)
+      .set('Authorization', `Bearer ${patientToken}`);
+    expect(history.body.messages.map(m => m.content)).toContain('Doctor reply persisted');
+
+    const unrelated = await request(app)
+      .post('/api/auth/register')
+      .send({ name: 'Unrelated Patient', email: `unrelated_${Date.now()}@example.com`, password: 'Password123!', role: 'patient' });
+    const forbidden = await request(app)
+      .get(`/api/chat/messages/${doctorId}`)
+      .set('Authorization', `Bearer ${unrelated.body.token}`);
+    expect(forbidden.status).toBe(403);
+  });
+
   it('manages patient notifications and mark as read', async () => {
     const res = await request(app)
       .get('/api/notifications')

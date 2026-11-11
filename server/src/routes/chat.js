@@ -4,6 +4,60 @@ const { authenticateToken } = require('../middleware/auth');
 
 const router = express.Router();
 
+// List only the authenticated user's actual patient-doctor relationships. A
+// patient/doctor pair is the conversation key in the existing messages table.
+router.get('/conversations', authenticateToken, async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const isDoctor = req.user.role === 'doctor';
+    if (!isDoctor && req.user.role !== 'patient') {
+      return res.status(403).json({ error: 'Only patients and doctors can access conversations.' });
+    }
+
+    const result = await db.query(`
+      WITH relationships AS (
+        SELECT ${isDoctor ? 's.patient_id AS partner_id' : 's.doctor_id AS partner_id'}
+        FROM subscriptions s
+        WHERE ${isDoctor ? 's.doctor_id' : 's.patient_id'} = $1
+        UNION
+        SELECT ${isDoctor ? 'f.patient_id AS partner_id' : 'f.doctor_id AS partner_id'}
+        FROM followup_requests f
+        WHERE ${isDoctor ? 'f.doctor_id' : 'f.patient_id'} = $1
+      ), latest AS (
+        SELECT DISTINCT ON (CASE WHEN m.sender_id = $1 THEN m.receiver_id ELSE m.sender_id END)
+          CASE WHEN m.sender_id = $1 THEN m.receiver_id ELSE m.sender_id END AS partner_id,
+          m.content AS latest_message, m.created_at AS latest_message_at
+        FROM messages m
+        WHERE m.sender_id = $1 OR m.receiver_id = $1
+        ORDER BY CASE WHEN m.sender_id = $1 THEN m.receiver_id ELSE m.sender_id END, m.created_at DESC, m.id DESC
+      )
+      SELECT u.id, u.name,
+        COALESCE(dp.specialization, 'Clinical Conversation') AS specialization,
+        l.latest_message, l.latest_message_at
+      FROM relationships r
+      JOIN users u ON u.id = r.partner_id
+      LEFT JOIN doctor_profiles dp ON dp.user_id = u.id
+      LEFT JOIN latest l ON l.partner_id = u.id
+      WHERE u.role = $2
+      ORDER BY l.latest_message_at DESC NULLS LAST, u.name ASC
+    `, [userId, isDoctor ? 'patient' : 'doctor']);
+    res.json({ conversations: result.rows });
+  } catch (err) {
+    console.error('Fetch conversations error:', err);
+    res.status(500).json({ error: 'Failed to fetch conversations.' });
+  }
+});
+
+async function hasConversationRelationship(patientId, doctorId) {
+  const result = await db.query(`
+    SELECT 1 FROM subscriptions WHERE patient_id = $1 AND doctor_id = $2
+    UNION ALL
+    SELECT 1 FROM followup_requests WHERE patient_id = $1 AND doctor_id = $2
+    LIMIT 1
+  `, [patientId, doctorId]);
+  return result.rows.length > 0;
+}
+
 // Helper to check if chat is unlocked between patient and doctor
 async function checkChatAccess(patientId, doctorId) {
   const nowIso = new Date().toISOString();
@@ -42,6 +96,11 @@ router.get('/messages/:partnerId', authenticateToken, async (req, res) => {
     const isPatient = req.user.role === 'patient';
     const patientId = isPatient ? userId : partnerId;
     const doctorId = isPatient ? partnerId : userId;
+
+    if ((isPatient && req.user.role !== 'patient') || (!isPatient && req.user.role !== 'doctor') ||
+        !await hasConversationRelationship(patientId, doctorId)) {
+      return res.status(403).json({ error: 'You are not authorized to access this conversation.' });
+    }
 
     const access = await checkChatAccess(patientId, doctorId);
 
@@ -83,8 +142,15 @@ router.post('/messages', authenticateToken, async (req, res) => {
     }
 
     const isPatient = req.user.role === 'patient';
+    if (!['patient', 'doctor'].includes(req.user.role)) {
+      return res.status(403).json({ error: 'Only patients and doctors can send messages.' });
+    }
     const patientId = isPatient ? senderId : receiver_id;
     const doctorId = isPatient ? receiver_id : senderId;
+
+    if (!await hasConversationRelationship(patientId, doctorId)) {
+      return res.status(403).json({ error: 'You are not authorized to message this user.' });
+    }
 
     const access = await checkChatAccess(patientId, doctorId);
     if (!access.unlocked) {
