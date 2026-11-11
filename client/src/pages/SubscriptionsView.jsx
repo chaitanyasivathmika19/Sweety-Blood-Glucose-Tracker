@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { api } from '../api';
-import { CreditCard, CheckCircle2, Clock, AlertTriangle, QrCode, ShieldCheck } from 'lucide-react';
+import { CreditCard, CheckCircle2, QrCode, ShieldCheck, AlertCircle } from 'lucide-react';
 
 export default function SubscriptionsView() {
   const { showToast } = useAuth();
@@ -14,6 +14,8 @@ export default function SubscriptionsView() {
   const [currentSub, setCurrentSub] = useState(null);
   const [submitting, setSubmitting] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [doctorQrUrl, setDoctorQrUrl] = useState(null);
+  const [qrLoading, setQrLoading] = useState(false);
 
   const loadData = async () => {
     try {
@@ -26,14 +28,23 @@ export default function SubscriptionsView() {
 
       const fetchedPlans = plansData.plans || [];
       setPlans(fetchedPlans);
-      setDoctors(docsData.doctors || []);
+      const fetchedDoctors = docsData.doctors || [];
+      setDoctors(fetchedDoctors);
       setCurrentSub(subData.subscription || null);
 
       const savedDocId = localStorage.getItem('sweety_selected_doctor_id');
-      if (savedDocId && docsData.doctors?.some(d => d.id === parseInt(savedDocId, 10))) {
-        setSelectedDoctorId(parseInt(savedDocId, 10));
-      } else if (docsData.doctors?.length > 0) {
-        setSelectedDoctorId(docsData.doctors[0].id);
+      let initialDoctorId = null;
+      if (savedDocId && fetchedDoctors.some(d => d.id === parseInt(savedDocId, 10))) {
+        initialDoctorId = parseInt(savedDocId, 10);
+      } else if (fetchedDoctors.length > 0) {
+        initialDoctorId = fetchedDoctors[0].id;
+      }
+      setSelectedDoctorId(initialDoctorId);
+
+      // Load QR for initial doctor
+      if (initialDoctorId) {
+        const doc = fetchedDoctors.find(d => d.id === initialDoctorId);
+        setDoctorQrUrl(doc?.payment_qr_url || null);
       }
     } catch (err) {
       showToast('Failed to load subscription details.');
@@ -46,6 +57,18 @@ export default function SubscriptionsView() {
     loadData();
   }, []);
 
+  // When selected doctor changes, update the QR from the already-fetched doctor list
+  useEffect(() => {
+    if (!selectedDoctorId || doctors.length === 0) {
+      setDoctorQrUrl(null);
+      return;
+    }
+    setQrLoading(true);
+    const doc = doctors.find(d => d.id === selectedDoctorId);
+    setDoctorQrUrl(doc?.payment_qr_url || null);
+    setQrLoading(false);
+  }, [selectedDoctorId, doctors]);
+
   const handleSubmitPayment = async (e) => {
     e.preventDefault();
     const activePlan = plans[selectedPlanIndex];
@@ -54,7 +77,7 @@ export default function SubscriptionsView() {
       return;
     }
     if (!txnRef.trim() || txnRef.trim().length < 5) {
-      showToast('Please enter a valid reference ID.');
+      showToast('Please enter a valid reference ID (minimum 5 characters).');
       return;
     }
 
@@ -96,7 +119,65 @@ export default function SubscriptionsView() {
         </span>
       </div>
 
-      {/* Plan Grid matching prototype */}
+      {/* ── Doctor selection ── */}
+      <section className="card" style={{ marginBottom: 20 }}>
+        <div className="card-head">
+          <div>
+            <h3>Select a Consulting Doctor</h3>
+            <p>Choose the doctor you wish to consult with for your subscription.</p>
+          </div>
+        </div>
+
+        {loading ? (
+          <div style={{ padding: '24px 0', textAlign: 'center', color: 'var(--muted)', fontSize: 13 }}>Loading doctors…</div>
+        ) : doctors.length === 0 ? (
+          <div className="notice notice-info">No doctors are currently available. Please check back later.</div>
+        ) : (
+          <div className="grid" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: 14 }}>
+            {doctors.map((doc, idx) => {
+              const colorOptions = ['teal', 'purple', 'coral'];
+              const colorClass = colorOptions[idx % 3];
+              const initials = doc.name.replace('Dr. ', '').split(' ').map(n => n[0]).join('').substring(0, 2);
+              const isSelected = doc.id === selectedDoctorId;
+              return (
+                <div
+                  key={doc.id}
+                  onClick={() => setSelectedDoctorId(doc.id)}
+                  style={{
+                    border: isSelected ? '2px solid var(--teal)' : '1px solid var(--line)',
+                    borderRadius: 14,
+                    padding: '14px 16px',
+                    cursor: 'pointer',
+                    background: isSelected ? '#f7fcfb' : '#fff',
+                    transition: 'all 0.2s ease',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 12
+                  }}
+                >
+                  <div className={`avatar ${colorClass}`} style={{ width: 46, height: 46, fontSize: 15, borderRadius: 13, flexShrink: 0 }}>
+                    {initials}
+                  </div>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontWeight: 800, fontSize: 13.5 }}>{doc.name}</div>
+                    <div style={{ fontSize: 12, color: 'var(--teal)', fontWeight: 700, display: 'flex', alignItems: 'center', gap: 4, marginTop: 2 }}>
+                      <CheckCircle2 size={12} /> {doc.specialization}
+                    </div>
+                    <div style={{ fontSize: 11, color: 'var(--muted)', marginTop: 2 }}>{doc.experience_years} yrs exp</div>
+                  </div>
+                  {isSelected && (
+                    <div style={{ width: 20, height: 20, borderRadius: '50%', background: 'var(--teal)', display: 'grid', placeItems: 'center', flexShrink: 0 }}>
+                      <CheckCircle2 size={12} color="#fff" />
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </section>
+
+      {/* ── Plan grid ── */}
       <section className="card" style={{ marginBottom: 22 }}>
         <div className="card-head">
           <div>
@@ -113,11 +194,7 @@ export default function SubscriptionsView() {
                 key={p.id}
                 className={`plan-card ${isSelected ? 'selected' : ''}`}
                 onClick={() => setSelectedPlanIndex(idx)}
-                style={{
-                  border: isSelected ? '2px solid var(--teal)' : '1px solid var(--line)',
-                  background: isSelected ? '#f7fcfb' : '#fff',
-                  cursor: 'pointer'
-                }}
+                style={{ cursor: 'pointer' }}
               >
                 <h3 style={{ fontSize: 13.5, margin: '0 0 10px', fontWeight: 800 }}>
                   {planTitles[idx] || p.name}
@@ -144,50 +221,54 @@ export default function SubscriptionsView() {
 
         <div style={{ height: 1, background: 'var(--line)', margin: '22px 0' }} />
 
-        {/* Payment Instructions & Submit Form 2-Column Grid */}
+        {/* Payment instructions & form */}
         <div className="grid" style={{ gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1.25fr)', gap: 24 }}>
+          {/* Left: QR + instructions */}
           <div>
             <h3 style={{ fontSize: 14.5, margin: '0 0 8px' }}>Payment instructions</h3>
+            {selectedDoc && (
+              <p style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--ink)', marginBottom: 4 }}>
+                Paying: {selectedDoc.name}
+              </p>
+            )}
             <p style={{ fontSize: 12, color: 'var(--muted)', lineHeight: 1.7, margin: '0 0 16px' }}>
-              Pay the selected fee using the doctor's payment method. Then submit the transaction reference and screenshot for review. A screenshot alone does not confirm payment.
+              Scan the doctor's QR code to pay via UPI. Then enter your transaction reference and optionally upload a screenshot.
             </p>
 
+            {/* Doctor's actual QR code */}
             <div style={{
-              width: 170,
-              height: 170,
-              margin: '12px auto',
-              border: '1px dashed #bdc8d2',
-              borderRadius: 14,
-              display: 'grid',
-              placeItems: 'center',
-              background: 'repeating-conic-gradient(#fff 0% 25%, #f4f6f8 0% 50%) 50% / 18px 18px',
-              color: '#687583',
-              fontSize: 11.5,
-              textAlign: 'center',
-              padding: 16
+              width: 170, height: 170, margin: '0 auto 12px',
+              border: '1px solid var(--line)', borderRadius: 14,
+              display: 'grid', placeItems: 'center',
+              background: '#f8fafc', overflow: 'hidden'
             }}>
-              <div>
-                <QrCode size={52} color="var(--teal)" style={{ margin: '0 auto 8px' }} />
-                <b>DEMO PAYMENT QR</b>
-                <div style={{ fontSize: 10, color: 'var(--muted)' }}>Scan via UPI</div>
-              </div>
+              {qrLoading ? (
+                <div style={{ color: 'var(--muted)', fontSize: 11.5 }}>Loading…</div>
+              ) : doctorQrUrl ? (
+                <img
+                  src={doctorQrUrl}
+                  alt={`${selectedDoc?.name || 'Doctor'}'s payment QR code`}
+                  style={{ width: '100%', height: '100%', objectFit: 'contain' }}
+                />
+              ) : (
+                <div style={{ textAlign: 'center', padding: 16 }}>
+                  <AlertCircle size={36} color="#b0bbc6" style={{ margin: '0 auto 8px', display: 'block' }} />
+                  <b style={{ fontSize: 11.5, color: '#687583', display: 'block' }}>
+                    {selectedDoc ? `${selectedDoc.name} has not uploaded a payment QR yet.` : 'Select a doctor to see their QR code.'}
+                  </b>
+                  <div style={{ fontSize: 10.5, color: 'var(--muted)', marginTop: 4 }}>Contact the doctor for payment details.</div>
+                </div>
+              )}
             </div>
 
-            <div className="form-group" style={{ marginTop: 14 }}>
-              <label>Select Consulting Doctor</label>
-              <select
-                value={selectedDoctorId || ''}
-                onChange={(e) => setSelectedDoctorId(parseInt(e.target.value, 10))}
-              >
-                {doctors.map(d => (
-                  <option key={d.id} value={d.id}>
-                    {d.name} ({d.specialization}) — {d.experience_years} yrs
-                  </option>
-                ))}
-              </select>
-            </div>
+            {doctorQrUrl && (
+              <p style={{ fontSize: 11, color: 'var(--muted)', textAlign: 'center' }}>
+                Scan via any UPI app · Belongs to {selectedDoc?.name}
+              </p>
+            )}
           </div>
 
+          {/* Right: Submit form */}
           <div>
             <h3 style={{ fontSize: 14.5, margin: '0 0 8px' }}>Submit payment proof</h3>
             <form onSubmit={handleSubmitPayment}>
@@ -197,6 +278,16 @@ export default function SubscriptionsView() {
                   type="text"
                   readOnly
                   value={selectedPlan ? `₹${selectedPlan.price} · Every ${selectedPlan.frequency_days} days` : 'Choose a plan above'}
+                  style={{ background: '#f8fafc' }}
+                />
+              </div>
+
+              <div className="form-group" style={{ marginBottom: 14 }}>
+                <label>Consulting doctor</label>
+                <input
+                  type="text"
+                  readOnly
+                  value={selectedDoc ? `${selectedDoc.name} · ${selectedDoc.specialization}` : 'Select a doctor above'}
                   style={{ background: '#f8fafc' }}
                 />
               </div>
@@ -243,17 +334,13 @@ export default function SubscriptionsView() {
                 )}
               </div>
 
-              <div className="notice notice-warning" style={{ fontSize: 11.5, margin: '0 0 16px', lineHeight: 1.5 }}>
-                🔒 <b>Prototype Demo Mode:</b> Status remains pending until reviewed. Payments, transactions, and image uploads are simulated locally for demonstration and are not processed by a real financial gateway or uploaded to an external server.
-              </div>
-
               <button
                 type="submit"
                 className="btn-primary"
                 style={{ width: '100%' }}
-                disabled={submitting}
+                disabled={submitting || !selectedDoctorId}
               >
-                {submitting ? 'Submitting...' : 'Submit payment proof'}
+                {submitting ? 'Submitting…' : 'Submit payment proof'}
               </button>
             </form>
           </div>
@@ -268,7 +355,7 @@ export default function SubscriptionsView() {
             <p>Current consultation access</p>
           </div>
           <span className={`badge ${currentSub?.status === 'active' ? 'badge-success' : 'badge-pending'}`}>
-            {currentSub?.status === 'active' ? 'Active Consultation' : 'Pending Verification Demo'}
+            {currentSub?.status === 'active' ? 'Active Consultation' : 'Pending Verification'}
           </span>
         </div>
 
