@@ -65,3 +65,4 @@ npm run dev --prefix client   # Frontend on http://localhost:5173
 ## Demo Accounts
 - **Patient Account:** `patient@sweety.com` / `Password123!`
 - **Doctor Account:** `doctor@sweety.com` / `Password123!`
+

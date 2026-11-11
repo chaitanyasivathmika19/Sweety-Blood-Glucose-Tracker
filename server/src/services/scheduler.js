@@ -41,7 +41,7 @@ function startScheduler() {
       await db.query(`
         UPDATE subscriptions
         SET status = 'expired'
-        WHERE status = 'active' AND expiry_date < CURRENT_TIMESTAMP
+        WHERE status = 'active' AND expiry_date < NOW()
       `);
     } catch (err) {
       console.error('Scheduler execution error:', err.message);

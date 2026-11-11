@@ -59,3 +59,4 @@ fs.copyFileSync(path.join(ROOT, 'docker-compose.yml'), path.join(PHASE4, 'docker
 fs.copyFileSync(path.join(ROOT, 'render.yaml'), path.join(PHASE4, 'render.yaml'));
 
 console.log('Phase organization completed successfully!');
+

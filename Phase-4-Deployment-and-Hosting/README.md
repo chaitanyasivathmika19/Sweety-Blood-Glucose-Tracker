@@ -33,3 +33,4 @@ This directory contains the production deployment, containerization, and hosting
 3. Connect repository: `https://github.com/chaitanyasivathmika19/Sweety-Blood-Glucose-Tracker`.
 4. Render automatically parses `render.yaml` to provision the database, backend web service, and frontend static site.
 5. Click **Apply**.
+
