@@ -1,12 +1,12 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { Heart, Lock, Mail } from 'lucide-react';
 
 export default function Login() {
   const { login, showToast } = useAuth();
   const navigate = useNavigate();
 
+  const [role, setRole] = useState('patient');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
@@ -18,7 +18,12 @@ export default function Login() {
     try {
       setLoading(true);
       const data = await login(email, password);
-      navigate(data.user.role === 'doctor' ? '/doctor' : '/');
+      // Route to selected role workspace
+      if (role === 'doctor' || data.user.role === 'doctor') {
+        navigate('/doctor');
+      } else {
+        navigate('/');
+      }
     } catch (err) {
       setError(err.message || 'Login failed.');
     } finally {
@@ -26,13 +31,18 @@ export default function Login() {
     }
   };
 
-  const handleQuickDemo = async (role) => {
+  const handleQuickDemo = async (selectedRole) => {
     try {
       setLoading(true);
-      if (role === 'doctor') {
+      setRole(selectedRole);
+      if (selectedRole === 'doctor') {
+        setEmail('doctor@sweety.com');
+        setPassword('Password123!');
         const data = await login('doctor@sweety.com', 'Password123!');
         navigate('/doctor');
       } else {
+        setEmail('patient@sweety.com');
+        setPassword('Password123!');
         const data = await login('patient@sweety.com', 'Password123!');
         navigate('/');
       }
@@ -46,14 +56,70 @@ export default function Login() {
   return (
     <div style={{ minHeight: '100vh', display: 'grid', placeItems: 'center', background: 'var(--bg)', padding: 18 }}>
       <div className="card" style={{ width: 'min(440px, 100%)', padding: 32 }}>
-        <div style={{ textAlign: 'center', marginBottom: 24 }}>
-          <div style={{ width: 44, height: 44, borderRadius: 14, background: 'linear-gradient(135deg, #22a89d, #6b77d9)', display: 'grid', placeItems: 'center', color: '#fff', fontSize: 22, margin: '0 auto 12px', boxShadow: '0 8px 18px rgba(23, 139, 131, 0.25)' }}>
-            ♥
+        {/* Prominent High-Contrast sweety. Wordmark */}
+        <div style={{ textAlign: 'center', marginBottom: 20 }}>
+          <div style={{ display: 'inline-flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
+            <div style={{ width: 44, height: 44, borderRadius: 14, background: 'linear-gradient(135deg, #22a89d, #6b77d9)', display: 'grid', placeItems: 'center', color: '#fff', fontSize: 24, boxShadow: '0 6px 14px rgba(23, 139, 131, 0.25)' }}>
+              ♥
+            </div>
+            <span style={{ fontSize: 32, fontWeight: 900, letterSpacing: -0.8, color: 'var(--ink)' }}>
+              sweety<span style={{ color: 'var(--teal)' }}>.</span>
+            </span>
           </div>
-          <h2 style={{ margin: '0 0 6px', fontSize: 24, fontWeight: 800 }}>Welcome to Sweety</h2>
-          <p style={{ margin: 0, color: 'var(--muted)', fontSize: 13 }}>
+          <p style={{ margin: 0, color: 'var(--muted)', fontSize: 13, fontWeight: 600 }}>
             Blood Glucose Tracker & Doctor Consultation Platform
           </p>
+        </div>
+
+        {/* Prototype Demo Notice */}
+        <div className="notice notice-info" style={{ fontSize: 11.5, margin: '0 0 16px', lineHeight: 1.5 }}>
+          ✦ <b>Prototype Demonstration:</b> Local session authentication. Choose your role below to explore the matching patient or doctor workspace.
+        </div>
+
+        {/* Clear Role Selection Pill */}
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6, background: '#f1f5f9', padding: 4, borderRadius: 12, marginBottom: 18 }}>
+          <button
+            type="button"
+            onClick={() => {
+              setRole('patient');
+              if (!email || email === 'doctor@sweety.com') setEmail('patient@sweety.com');
+              if (!password) setPassword('Password123!');
+            }}
+            style={{
+              border: 0,
+              borderRadius: 8,
+              padding: '9px 12px',
+              background: role === 'patient' ? '#fff' : 'transparent',
+              color: role === 'patient' ? 'var(--teal)' : '#64748b',
+              fontWeight: 800,
+              fontSize: 13,
+              boxShadow: role === 'patient' ? '0 2px 6px rgba(0,0,0,0.08)' : 'none',
+              cursor: 'pointer'
+            }}
+          >
+            Patient Account
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              setRole('doctor');
+              if (!email || email === 'patient@sweety.com') setEmail('doctor@sweety.com');
+              if (!password) setPassword('Password123!');
+            }}
+            style={{
+              border: 0,
+              borderRadius: 8,
+              padding: '9px 12px',
+              background: role === 'doctor' ? '#fff' : 'transparent',
+              color: role === 'doctor' ? 'var(--purple)' : '#64748b',
+              fontWeight: 800,
+              fontSize: 13,
+              boxShadow: role === 'doctor' ? '0 2px 6px rgba(0,0,0,0.08)' : 'none',
+              cursor: 'pointer'
+            }}
+          >
+            Doctor Account
+          </button>
         </div>
 
         {error && (
@@ -67,7 +133,7 @@ export default function Login() {
             <label>Email Address</label>
             <input
               type="email"
-              placeholder="e.g. patient@sweety.com"
+              placeholder={role === 'doctor' ? 'doctor@sweety.com' : 'patient@sweety.com'}
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               required
@@ -91,14 +157,14 @@ export default function Login() {
             style={{ width: '100%', padding: 12, fontSize: 14 }}
             disabled={loading}
           >
-            {loading ? 'Signing in...' : 'Sign In'}
+            {loading ? 'Signing in...' : `Sign In as ${role === 'doctor' ? 'Doctor' : 'Patient'}`}
           </button>
         </form>
 
         <div style={{ margin: '20px 0', textAlign: 'center', position: 'relative' }}>
           <div style={{ height: 1, background: 'var(--line)' }} />
           <span style={{ position: 'relative', top: -10, background: '#fff', padding: '0 12px', fontSize: 11, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: 1 }}>
-            Quick Demo Login
+            One-Click Demo Accounts
           </span>
         </div>
 
@@ -108,7 +174,7 @@ export default function Login() {
             className="btn-secondary"
             onClick={() => handleQuickDemo('patient')}
             disabled={loading}
-            style={{ fontSize: 12, padding: 8 }}
+            style={{ fontSize: 12, padding: 9, fontWeight: 700 }}
           >
             Demo Patient
           </button>
@@ -117,7 +183,7 @@ export default function Login() {
             className="btn-secondary"
             onClick={() => handleQuickDemo('doctor')}
             disabled={loading}
-            style={{ fontSize: 12, padding: 8 }}
+            style={{ fontSize: 12, padding: 9, fontWeight: 700 }}
           >
             Demo Doctor
           </button>

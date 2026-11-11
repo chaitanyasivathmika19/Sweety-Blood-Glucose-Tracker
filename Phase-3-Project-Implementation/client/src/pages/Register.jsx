@@ -36,14 +36,24 @@ export default function Register() {
   return (
     <div style={{ minHeight: '100vh', display: 'grid', placeItems: 'center', background: 'var(--bg)', padding: 18 }}>
       <div className="card" style={{ width: 'min(460px, 100%)', padding: 32 }}>
-        <div style={{ textAlign: 'center', marginBottom: 24 }}>
-          <div style={{ width: 44, height: 44, borderRadius: 14, background: 'linear-gradient(135deg, #22a89d, #6b77d9)', display: 'grid', placeItems: 'center', color: '#fff', fontSize: 22, margin: '0 auto 12px', boxShadow: '0 8px 18px rgba(23, 139, 131, 0.25)' }}>
-            ♥
+        {/* Prominent High-Contrast sweety. Wordmark */}
+        <div style={{ textAlign: 'center', marginBottom: 20 }}>
+          <div style={{ display: 'inline-flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
+            <div style={{ width: 44, height: 44, borderRadius: 14, background: 'linear-gradient(135deg, #22a89d, #6b77d9)', display: 'grid', placeItems: 'center', color: '#fff', fontSize: 24, boxShadow: '0 6px 14px rgba(23, 139, 131, 0.25)' }}>
+              ♥
+            </div>
+            <span style={{ fontSize: 32, fontWeight: 900, letterSpacing: -0.8, color: 'var(--ink)' }}>
+              sweety<span style={{ color: 'var(--teal)' }}>.</span>
+            </span>
           </div>
-          <h2 style={{ margin: '0 0 6px', fontSize: 24, fontWeight: 800 }}>Create Your Account</h2>
-          <p style={{ margin: 0, color: 'var(--muted)', fontSize: 13 }}>
-            Join Sweety for blood glucose tracking and doctor consultations
+          <p style={{ margin: 0, color: 'var(--muted)', fontSize: 13, fontWeight: 600 }}>
+            Blood Glucose Tracker & Doctor Consultation Platform
           </p>
+        </div>
+
+        {/* Prototype Demo Notice */}
+        <div className="notice notice-info" style={{ fontSize: 11.5, margin: '0 0 16px', lineHeight: 1.5 }}>
+          ✦ <b>Prototype Demonstration:</b> Local session registration. Select your role below to initialize a new patient or doctor profile.
         </div>
 
         {error && (
