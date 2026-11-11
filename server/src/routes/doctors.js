@@ -1,8 +1,24 @@
 const express = require('express');
+const multer = require('multer');
+const fs = require('fs');
+const path = require('path');
 const db = require('../database/db');
 const { authenticateToken, requireRole } = require('../middleware/auth');
 
 const router = express.Router();
+
+// Ensure upload directory exists
+const qrUploadDir = path.join(__dirname, '../../uploads/qr');
+fs.mkdirSync(qrUploadDir, { recursive: true });
+
+const qrUpload = multer({
+  dest: qrUploadDir,
+  limits: { fileSize: 2 * 1024 * 1024 }, // 2 MB limit
+  fileFilter: (req, file, cb) => {
+    if (file.mimetype.startsWith('image/')) cb(null, true);
+    else cb(new Error('Only image files are allowed'), false);
+  }
+});
 
 // GET /api/doctors - List doctors available for consultation
 router.get('/', async (req, res) => {
@@ -22,36 +38,68 @@ router.get('/', async (req, res) => {
   }
 });
 
-// GET /api/doctors/:id - Single doctor profile
-router.get('/:id', async (req, res) => {
+// POST /api/doctors/me/qr - Upload doctor's payment QR code
+router.post('/me/qr', authenticateToken, requireRole('doctor'), qrUpload.single('qr'), async (req, res) => {
   try {
-    const docId = parseInt(req.params.id, 10);
-    const docRes = await db.query(`
-      SELECT u.id, u.name, u.email, u.avatar_url,
-             d.specialization, d.experience_years, d.qualifications, d.bio, d.verified, d.payment_qr_url
-      FROM users u
-      JOIN doctor_profiles d ON u.id = d.user_id
-      WHERE u.id = $1 AND u.role = 'doctor'
-    `, [docId]);
+    const doctorId = req.user.id;
+    if (!req.file) {
+      return res.status(400).json({ error: 'No QR image uploaded.' });
+    }
+    // Build filename preserving extension
+    const ext = path.extname(req.file.originalname) || '.png';
+    const fileName = req.file.filename + ext;
+    const newPath = path.join(qrUploadDir, fileName);
+    fs.renameSync(req.file.path, newPath);
+    const qrUrl = `/uploads/qr/${fileName}`;
 
-    if (docRes.rows.length === 0) {
-      return res.status(404).json({ error: 'Doctor not found.' });
+    // Remove old file if present
+    const existing = await db.query('SELECT payment_qr_url FROM doctor_profiles WHERE user_id=$1', [doctorId]);
+    const oldUrl = existing.rows[0]?.payment_qr_url;
+    if (oldUrl) {
+      const oldPath = path.join(__dirname, '../../', oldUrl);
+      if (fs.existsSync(oldPath)) fs.unlinkSync(oldPath);
     }
 
-    // Get consultation plans
-    const plansRes = await db.query('SELECT * FROM consultation_plans ORDER BY price ASC');
-
-    return res.json({
-      doctor: docRes.rows[0],
-      plans: plansRes.rows
-    });
+    await db.query('UPDATE doctor_profiles SET payment_qr_url=$1 WHERE user_id=$2', [qrUrl, doctorId]);
+    return res.json({ message: 'QR code uploaded.', qrUrl });
   } catch (err) {
-    console.error('Fetch doctor details error:', err);
-    return res.status(500).json({ error: 'Failed to fetch doctor details.' });
+    console.error('Upload doctor QR error:', err);
+    return res.status(500).json({ error: 'Failed to upload QR code.' });
   }
 });
 
-// GET /api/doctors/portal/patients - List authorized patients for logged in doctor
+// GET /api/doctors/me/qr - Fetch the authenticated doctor's QR URL
+router.get('/me/qr', authenticateToken, requireRole('doctor'), async (req, res) => {
+  try {
+    const doctorId = req.user.id;
+    const resDb = await db.query('SELECT payment_qr_url FROM doctor_profiles WHERE user_id=$1', [doctorId]);
+    const qrUrl = resDb.rows[0]?.payment_qr_url || null;
+    return res.json({ qrUrl });
+  } catch (err) {
+    console.error('Fetch doctor QR error:', err);
+    return res.status(500).json({ error: 'Failed to fetch QR code.' });
+  }
+});
+
+// DELETE /api/doctors/me/qr - Remove the authenticated doctor's QR code
+router.delete('/me/qr', authenticateToken, requireRole('doctor'), async (req, res) => {
+  try {
+    const doctorId = req.user.id;
+    const resDb = await db.query('SELECT payment_qr_url FROM doctor_profiles WHERE user_id=$1', [doctorId]);
+    const qrUrl = resDb.rows[0]?.payment_qr_url;
+    if (qrUrl) {
+      const filePath = path.join(__dirname, '../../', qrUrl);
+      if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
+    }
+    await db.query('UPDATE doctor_profiles SET payment_qr_url=NULL WHERE user_id=$1', [doctorId]);
+    return res.json({ message: 'QR code removed.' });
+  } catch (err) {
+    console.error('Delete doctor QR error:', err);
+    return res.status(500).json({ error: 'Failed to delete QR code.' });
+  }
+});
+
+// GET /api/doctors/portal/patients - List authorized patients for logged-in doctor
 router.get('/portal/patients', authenticateToken, requireRole('doctor'), async (req, res) => {
   try {
     const doctorId = req.user.id;
@@ -66,7 +114,6 @@ router.get('/portal/patients', authenticateToken, requireRole('doctor'), async (
       ORDER BY u.name ASC
     `, [doctorId]);
 
-    // For each authorized patient, get latest reading
     const patients = [];
     for (const p of patientsRes.rows) {
       const latestReadingRes = await db.query(`
@@ -97,20 +144,19 @@ router.get('/portal/patients', authenticateToken, requireRole('doctor'), async (
   }
 });
 
-// GET /api/doctors/portal/patients/:patientId/readings - Authorized patient's readings
+// GET /api/doctors/portal/patients/:patientId/readings - Authorized patient readings
 router.get('/portal/patients/:patientId/readings', authenticateToken, requireRole('doctor'), async (req, res) => {
   try {
     const doctorId = req.user.id;
     const patientId = parseInt(req.params.patientId, 10);
 
-    // Verify authorized relationship
     const authCheck = await db.query(`
       SELECT id FROM subscriptions
       WHERE doctor_id = $1 AND patient_id = $2 AND status = 'active'
     `, [doctorId, patientId]);
 
     if (authCheck.rows.length === 0) {
-      return res.status(403).json({ error: 'Access denied: you are not authorized to view this patient’s records.' });
+      return res.status(403).json({ error: 'Access denied: you are not authorized to view this patient\'s records.' });
     }
 
     const readingsRes = await db.query(`
@@ -134,6 +180,37 @@ router.get('/portal/patients/:patientId/readings', authenticateToken, requireRol
   } catch (err) {
     console.error('Fetch patient readings for doctor error:', err);
     return res.status(500).json({ error: 'Failed to fetch patient records.' });
+  }
+});
+
+// GET /api/doctors/:id - Single doctor profile (must be AFTER /me/qr and /portal routes)
+router.get('/:id', async (req, res) => {
+  try {
+    const docId = parseInt(req.params.id, 10);
+    if (isNaN(docId)) {
+      return res.status(400).json({ error: 'Invalid doctor ID.' });
+    }
+    const docRes = await db.query(`
+      SELECT u.id, u.name, u.email, u.avatar_url,
+             d.specialization, d.experience_years, d.qualifications, d.bio, d.verified, d.payment_qr_url
+      FROM users u
+      JOIN doctor_profiles d ON u.id = d.user_id
+      WHERE u.id = $1 AND u.role = 'doctor'
+    `, [docId]);
+
+    if (docRes.rows.length === 0) {
+      return res.status(404).json({ error: 'Doctor not found.' });
+    }
+
+    const plansRes = await db.query('SELECT * FROM consultation_plans ORDER BY price ASC');
+
+    return res.json({
+      doctor: docRes.rows[0],
+      plans: plansRes.rows
+    });
+  } catch (err) {
+    console.error('Fetch doctor details error:', err);
+    return res.status(500).json({ error: 'Failed to fetch doctor details.' });
   }
 });
 

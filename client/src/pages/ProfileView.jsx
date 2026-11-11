@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { api } from '../api';
-import { User, Phone, MapPin, Calendar, Heart } from 'lucide-react';
+import { User, Phone, MapPin, Calendar, Heart, QrCode, Upload, Trash2 } from 'lucide-react';
 
 export default function ProfileView() {
   const { user, showToast, refreshUser } = useAuth();
@@ -18,6 +18,9 @@ export default function ProfileView() {
     experience_years: 0
   });
   const [saving, setSaving] = useState(false);
+  const [qrPreview, setQrPreview] = useState(null);
+  const [qrFile, setQrFile] = useState(null);
+  const [qrUploading, setQrUploading] = useState(false);
 
   const isDoctor = user?.role === 'doctor';
 
@@ -59,8 +62,50 @@ export default function ProfileView() {
 
   const initials = user?.name ? user.name.split(' ').map(n => n[0]).join('').substring(0, 2) : 'U';
 
+  const handleQrChange = (e) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setQrFile(file);
+      setQrPreview(URL.createObjectURL(file));
+    } else {
+      setQrFile(null);
+      setQrPreview(null);
+    }
+  };
+
+  const handleSaveQr = async () => {
+    if (!qrFile) {
+      showToast('Please select a QR code image.');
+      return;
+    }
+    try {
+      setQrUploading(true);
+      const data = new FormData();
+      data.append('qr', qrFile);
+      await api.uploadDoctorQr(data);
+      showToast('Payment QR code saved.');
+      await refreshUser();
+    } catch (err) {
+      showToast(err.message || 'Failed to upload QR code.');
+    } finally {
+      setQrUploading(false);
+      setQrFile(null);
+      setQrPreview(null);
+    }
+  };
+
+  const handleRemoveQr = async () => {
+    try {
+      await api.deleteDoctorQr();
+      showToast('Payment QR code removed.');
+      await refreshUser();
+    } catch (err) {
+      showToast(err.message || 'Failed to remove QR code.');
+    }
+  };
+
   return (
-    <div>
+    <div className="animate-fade-in">
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 22, flexWrap: 'wrap', gap: 12 }}>
         <div>
           <h2 style={{ margin: '0 0 6px', fontSize: 22, fontWeight: 800 }}>
@@ -224,6 +269,100 @@ export default function ProfileView() {
             </button>
           </div>
         </form>
+          {isDoctor && (
+            <div style={{ marginTop: 32, paddingTop: 24, borderTop: '1px solid var(--line)' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16 }}>
+                <div style={{ width: 36, height: 36, borderRadius: 10, background: 'var(--teal2)', display: 'grid', placeItems: 'center' }}>
+                  <QrCode size={18} color="var(--teal)" />
+                </div>
+                <div>
+                  <h3 style={{ margin: 0, fontSize: 15, fontWeight: 800 }}>Payment QR Code</h3>
+                  <p style={{ margin: 0, fontSize: 12, color: 'var(--muted)' }}>
+                    Patients scan this QR to make consultation payments via UPI.
+                  </p>
+                </div>
+              </div>
+
+              {/* Existing saved QR */}
+              {user?.profile?.payment_qr_url && !qrPreview && (
+                <div style={{ marginBottom: 16 }}>
+                  <p style={{ fontSize: 11.5, fontWeight: 700, color: '#687583', marginBottom: 8 }}>Currently saved QR code:</p>
+                  <div style={{ position: 'relative', display: 'inline-block' }}>
+                    <img
+                      src={user.profile.payment_qr_url}
+                      alt="Your payment QR code"
+                      style={{ width: 180, height: 180, objectFit: 'contain', borderRadius: 14, border: '2px solid var(--line)', background: '#f8fafc', display: 'block' }}
+                    />
+                    <button
+                      type="button"
+                      onClick={handleRemoveQr}
+                      style={{
+                        position: 'absolute', top: -8, right: -8,
+                        width: 28, height: 28, borderRadius: '50%',
+                        background: '#ef8d77', border: '2px solid #fff',
+                        display: 'grid', placeItems: 'center', cursor: 'pointer',
+                        boxShadow: '0 2px 6px rgba(0,0,0,0.12)'
+                      }}
+                      title="Remove QR code"
+                    >
+                      <Trash2 size={13} color="#fff" />
+                    </button>
+                  </div>
+                  <p style={{ fontSize: 11, color: 'var(--muted)', marginTop: 6 }}>Click the × to remove and upload a new one.</p>
+                </div>
+              )}
+
+              {/* Upload control */}
+              <div className="form-group" style={{ maxWidth: 420, marginBottom: 12 }}>
+                <label htmlFor="qrImageInput">
+                  <Upload size={12} style={{ marginRight: 4, verticalAlign: 'middle' }} />
+                  Upload Payment QR Code
+                </label>
+                <input
+                  id="qrImageInput"
+                  type="file"
+                  accept="image/*"
+                  onChange={handleQrChange}
+                  style={{ cursor: 'pointer' }}
+                />
+                <small>Image files only (PNG, JPG, WEBP). Max 2 MB. Associates with your doctor account.</small>
+              </div>
+
+              {/* Preview of newly selected file */}
+              {qrPreview && (
+                <div style={{ marginBottom: 14 }}>
+                  <p style={{ fontSize: 11.5, fontWeight: 700, color: '#687583', marginBottom: 8 }}>Preview (not saved yet):</p>
+                  <img
+                    src={qrPreview}
+                    alt="QR preview"
+                    style={{ width: 180, height: 180, objectFit: 'contain', borderRadius: 14, border: '2px dashed var(--teal)', background: '#f7fcfb', display: 'block' }}
+                  />
+                </div>
+              )}
+
+              <div style={{ display: 'flex', gap: 10 }}>
+                <button
+                  type="button"
+                  className="btn-primary"
+                  onClick={handleSaveQr}
+                  disabled={qrUploading || !qrFile}
+                  style={{ display: 'flex', alignItems: 'center', gap: 6 }}
+                >
+                  <QrCode size={14} />
+                  {qrUploading ? 'Saving...' : 'Save QR Code'}
+                </button>
+                {qrFile && (
+                  <button
+                    type="button"
+                    className="btn-secondary"
+                    onClick={() => { setQrFile(null); setQrPreview(null); }}
+                  >
+                    Cancel
+                  </button>
+                )}
+              </div>
+            </div>
+          )}
       </div>
     </div>
   );

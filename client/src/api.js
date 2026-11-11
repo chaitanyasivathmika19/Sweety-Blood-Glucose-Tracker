@@ -15,8 +15,11 @@ export function setToken(token) {
 
 async function request(endpoint, options = {}) {
   const token = getToken();
+
+  // Don't set Content-Type for FormData — browser must set it with boundary
+  const isFormData = options.body instanceof FormData;
   const headers = {
-    'Content-Type': 'application/json',
+    ...(isFormData ? {} : { 'Content-Type': 'application/json' }),
     ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
     ...options.headers
   };
@@ -84,6 +87,10 @@ export const api = {
   // Doctors
   getDoctors: () => request('/doctors'),
   getDoctor: (id) => request(`/doctors/${id}`),
+
+  // Doctor QR Code management
+  uploadDoctorQr: (formData) => request('/doctors/me/qr', { method: 'POST', body: formData, headers: {} }),
+  deleteDoctorQr: () => request('/doctors/me/qr', { method: 'DELETE' }),
   getAuthorizedPatients: () => request('/doctors/portal/patients'),
   getPatientReadings: (patientId) => request(`/doctors/portal/patients/${patientId}/readings`),
 
