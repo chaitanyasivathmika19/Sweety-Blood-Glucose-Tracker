@@ -82,9 +82,21 @@ export default function App() {
       <Route path="/profile" element={<ProtectedLayout><ProfileView /></ProtectedLayout>} />
 
       {/* Doctor Specific Routes */}
-      <Route path="/doctor" element={<ProtectedLayout><DoctorDashboard /></ProtectedLayout>} />
-      <Route path="/doctor/patients" element={<ProtectedLayout><DoctorPatients /></ProtectedLayout>} />
-      <Route path="/doctor/requests" element={<ProtectedLayout><DoctorRequests /></ProtectedLayout>} />
+      <Route path="/doctor" element={
+        <ProtectedLayout>
+          {user?.role !== 'doctor' ? <Navigate to="/" replace /> : <DoctorDashboard />}
+        </ProtectedLayout>
+      } />
+      <Route path="/doctor/patients" element={
+        <ProtectedLayout>
+          {user?.role !== 'doctor' ? <Navigate to="/" replace /> : <DoctorPatients />}
+        </ProtectedLayout>
+      } />
+      <Route path="/doctor/requests" element={
+        <ProtectedLayout>
+          {user?.role !== 'doctor' ? <Navigate to="/" replace /> : <DoctorRequests />}
+        </ProtectedLayout>
+      } />
 
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
