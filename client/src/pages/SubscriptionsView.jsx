@@ -10,6 +10,7 @@ export default function SubscriptionsView() {
   const [selectedPlanIndex, setSelectedPlanIndex] = useState(0);
   const [selectedDoctorId, setSelectedDoctorId] = useState(null);
   const [txnRef, setTxnRef] = useState('');
+  const [previewUrl, setPreviewUrl] = useState(null);
   const [currentSub, setCurrentSub] = useState(null);
   const [submitting, setSubmitting] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -68,6 +69,7 @@ export default function SubscriptionsView() {
 
       showToast('Payment proof submitted. Subscription remains pending verification.');
       setTxnRef('');
+      setPreviewUrl(null);
       loadData();
     } catch (err) {
       showToast(err.message || 'Payment submission failed.');
@@ -213,10 +215,32 @@ export default function SubscriptionsView() {
 
               <div className="form-group" style={{ marginBottom: 16 }}>
                 <label htmlFor="paymentImage">Upload image</label>
-                <input id="paymentImage" type="file" accept="image/*" />
+                <input
+                  id="paymentImage"
+                  type="file"
+                  accept="image/*"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file) {
+                      setPreviewUrl(URL.createObjectURL(file));
+                    } else {
+                      setPreviewUrl(null);
+                    }
+                  }}
+                />
                 <small style={{ fontSize: 11, color: 'var(--muted)', display: 'block', marginTop: 4 }}>
                   Allowed formats: PNG, JPG, JPEG, WEBP. Restricted to image files only.
                 </small>
+                {previewUrl && (
+                  <div style={{ marginTop: 10 }}>
+                    <img
+                      src={previewUrl}
+                      alt="Payment proof preview"
+                      style={{ maxWidth: '100%', maxHeight: 180, borderRadius: 10, border: '1.5px solid var(--border)', objectFit: 'contain' }}
+                    />
+                    <p style={{ fontSize: 11, color: 'var(--muted)', marginTop: 4 }}>Preview (not uploaded to any server)</p>
+                  </div>
+                )}
               </div>
 
               <div className="notice notice-warning" style={{ fontSize: 11.5, margin: '0 0 16px', lineHeight: 1.5 }}>
