@@ -31,12 +31,7 @@ export default function TopBar() {
     ? user.name.replace('Dr. ', '').split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase()
     : 'CS';
 
-  const handleRoleToggle = async (targetRole) => {
-    if ((targetRole === 'doctor' && !isDoctor) || (targetRole === 'patient' && isDoctor)) {
-      await switchRole(targetRole);
-      navigate(targetRole === 'doctor' ? '/doctor' : '/');
-    }
-  };
+
 
   return (
     <header className="topbar">
@@ -46,23 +41,7 @@ export default function TopBar() {
       </div>
 
       <div className="top-actions">
-        {/* Role Switcher Pill */}
-        <div className="role-switch" title="Toggle role views for evaluation">
-          <button
-            type="button"
-            onClick={() => handleRoleToggle('patient')}
-            className={!isDoctor ? 'active' : ''}
-          >
-            Patient view
-          </button>
-          <button
-            type="button"
-            onClick={() => handleRoleToggle('doctor')}
-            className={isDoctor ? 'active' : ''}
-          >
-            Doctor view
-          </button>
-        </div>
+
 
         {/* Notifications Icon Button */}
         <button
