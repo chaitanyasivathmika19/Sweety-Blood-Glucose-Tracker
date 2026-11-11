@@ -107,6 +107,21 @@ router.post('/login', async (req, res) => {
     const token = generateToken(user);
     const isProd = process.env.NODE_ENV === 'production';
 
+    let profile = null;
+    if (user.role === 'patient') {
+      const pRes = await db.query(
+        'SELECT date_of_birth, gender, phone, city, emergency_contact FROM patient_profiles WHERE user_id = $1',
+        [user.id]
+      );
+      profile = pRes.rows[0] || {};
+    } else {
+      const dRes = await db.query(
+        'SELECT specialization, experience_years, qualifications, bio, verified, payment_qr_url FROM doctor_profiles WHERE user_id = $1',
+        [user.id]
+      );
+      profile = dRes.rows[0] || {};
+    }
+
     res.cookie('token', token, {
       httpOnly: true,
       secure: isProd,
@@ -121,7 +136,8 @@ router.post('/login', async (req, res) => {
         id: user.id,
         name: user.name,
         email: user.email,
-        role: user.role
+        role: user.role,
+        profile
       }
     });
   } catch (err) {

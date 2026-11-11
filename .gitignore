@@ -5,5 +5,7 @@ dist/
 build/
 coverage/
 *.log
+uploads/
+server/uploads/
 .DS_Store
 Thumbs.db

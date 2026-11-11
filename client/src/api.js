@@ -1,6 +1,24 @@
 const rawBase = import.meta.env.VITE_API_BASE_URL || '/api';
 const API_BASE = rawBase === '/api' ? '/api' : (rawBase.endsWith('/api') ? rawBase : `${rawBase.replace(/\/+$/, '')}/api`);
 
+export function getMediaUrl(url) {
+  if (!url) return '';
+  if (url.startsWith('data:') || url.startsWith('blob:') || url.startsWith('http://') || url.startsWith('https://')) {
+    return url;
+  }
+  const base = import.meta.env.VITE_API_BASE_URL || '';
+  if (base.startsWith('http://') || base.startsWith('https://')) {
+    try {
+      const origin = new URL(base).origin;
+      const cleanPath = url.startsWith('/') ? url : `/${url}`;
+      return `${origin}${cleanPath}`;
+    } catch {
+      // fallback to relative path
+    }
+  }
+  return url.startsWith('/') ? url : `/${url}`;
+}
+
 function getToken() {
   return localStorage.getItem('sweety_token');
 }
@@ -49,6 +67,7 @@ async function request(endpoint, options = {}) {
 }
 
 export const api = {
+  getMediaUrl,
   // Auth
   register: (body) => request('/auth/register', { method: 'POST', body: JSON.stringify(body) }),
   login: (body) => request('/auth/login', { method: 'POST', body: JSON.stringify(body) }),

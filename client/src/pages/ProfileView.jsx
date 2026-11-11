@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { api } from '../api';
-import { User, Phone, MapPin, Calendar, Heart, QrCode, Upload, Trash2 } from 'lucide-react';
+import { api, getMediaUrl } from '../api';
+import { User, Phone, MapPin, Calendar, Heart, QrCode, Upload, Trash2, AlertCircle } from 'lucide-react';
 
 export default function ProfileView() {
   const { user, showToast, refreshUser } = useAuth();
@@ -21,8 +21,13 @@ export default function ProfileView() {
   const [qrPreview, setQrPreview] = useState(null);
   const [qrFile, setQrFile] = useState(null);
   const [qrUploading, setQrUploading] = useState(false);
+  const [savedQrError, setSavedQrError] = useState(false);
 
   const isDoctor = user?.role === 'doctor';
+
+  useEffect(() => {
+    setSavedQrError(false);
+  }, [user?.profile?.payment_qr_url]);
 
   useEffect(() => {
     if (user) {
@@ -84,6 +89,7 @@ export default function ProfileView() {
       data.append('qr', qrFile);
       await api.uploadDoctorQr(data);
       showToast('Payment QR code saved.');
+      setSavedQrError(false);
       await refreshUser();
     } catch (err) {
       showToast(err.message || 'Failed to upload QR code.');
@@ -98,6 +104,7 @@ export default function ProfileView() {
     try {
       await api.deleteDoctorQr();
       showToast('Payment QR code removed.');
+      setSavedQrError(false);
       await refreshUser();
     } catch (err) {
       showToast(err.message || 'Failed to remove QR code.');
@@ -288,11 +295,37 @@ export default function ProfileView() {
                 <div style={{ marginBottom: 16 }}>
                   <p style={{ fontSize: 11.5, fontWeight: 700, color: '#687583', marginBottom: 8 }}>Currently saved QR code:</p>
                   <div style={{ position: 'relative', display: 'inline-block' }}>
-                    <img
-                      src={user.profile.payment_qr_url}
-                      alt="Your payment QR code"
-                      style={{ width: 180, height: 180, objectFit: 'contain', borderRadius: 14, border: '2px solid var(--line)', background: '#f8fafc', display: 'block' }}
-                    />
+                    {savedQrError ? (
+                      <div
+                        style={{
+                          width: 180,
+                          height: 180,
+                          borderRadius: 14,
+                          border: '2px dashed #fca5a5',
+                          background: '#fff5f5',
+                          display: 'flex',
+                          flexDirection: 'column',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          padding: 14,
+                          textAlign: 'center',
+                          boxSizing: 'border-box'
+                        }}
+                      >
+                        <AlertCircle size={28} color="#ef4444" style={{ marginBottom: 6 }} />
+                        <span style={{ fontSize: 12, fontWeight: 700, color: '#b91c1c' }}>QR image unavailable</span>
+                        <span style={{ fontSize: 10.5, color: '#7f1d1d', marginTop: 4 }}>
+                          The saved file could not be loaded. Please re-upload your QR code below.
+                        </span>
+                      </div>
+                    ) : (
+                      <img
+                        src={getMediaUrl(user.profile.payment_qr_url)}
+                        alt=""
+                        onError={() => setSavedQrError(true)}
+                        style={{ width: 180, height: 180, objectFit: 'contain', borderRadius: 14, border: '2px solid var(--line)', background: '#f8fafc', display: 'block' }}
+                      />
+                    )}
                     <button
                       type="button"
                       onClick={handleRemoveQr}
@@ -308,7 +341,7 @@ export default function ProfileView() {
                       <Trash2 size={13} color="#fff" />
                     </button>
                   </div>
-                  <p style={{ fontSize: 11, color: 'var(--muted)', marginTop: 6 }}>Click the × to remove and upload a new one.</p>
+                  <p style={{ fontSize: 11, color: 'var(--muted)', marginTop: 6 }}>Click the trash icon to remove and upload a new one.</p>
                 </div>
               )}
 

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { api } from '../api';
+import { api, getMediaUrl } from '../api';
 import { CreditCard, CheckCircle2, QrCode, ShieldCheck, AlertCircle } from 'lucide-react';
 
 export default function SubscriptionsView() {
@@ -16,6 +16,7 @@ export default function SubscriptionsView() {
   const [loading, setLoading] = useState(true);
   const [doctorQrUrl, setDoctorQrUrl] = useState(null);
   const [qrLoading, setQrLoading] = useState(false);
+  const [qrImageError, setQrImageError] = useState(false);
 
   const loadData = async () => {
     try {
@@ -59,6 +60,7 @@ export default function SubscriptionsView() {
 
   // When selected doctor changes, update the QR from the already-fetched doctor list
   useEffect(() => {
+    setQrImageError(false);
     if (!selectedDoctorId || doctors.length === 0) {
       setDoctorQrUrl(null);
       return;
@@ -244,10 +246,11 @@ export default function SubscriptionsView() {
             }}>
               {qrLoading ? (
                 <div style={{ color: 'var(--muted)', fontSize: 11.5 }}>Loading…</div>
-              ) : doctorQrUrl ? (
+              ) : doctorQrUrl && !qrImageError ? (
                 <img
-                  src={doctorQrUrl}
-                  alt={`${selectedDoc?.name || 'Doctor'}'s payment QR code`}
+                  src={getMediaUrl(doctorQrUrl)}
+                  alt=""
+                  onError={() => setQrImageError(true)}
                   style={{ width: '100%', height: '100%', objectFit: 'contain' }}
                 />
               ) : (

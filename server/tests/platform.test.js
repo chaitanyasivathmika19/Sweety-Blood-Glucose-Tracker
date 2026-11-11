@@ -204,4 +204,53 @@ describe('Sweety Platform Consultations, Payments, Chat & Notifications Tests', 
     expect(unauthorizedRes.status).toBe(403);
     expect(unauthorizedRes.body.error).toContain('Access denied');
   });
+
+  it('allows doctor to upload payment QR code and serves static image', async () => {
+    // 1x1 transparent PNG buffer
+    const pngBuffer = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==', 'base64');
+
+    const uploadRes = await request(app)
+      .post('/api/doctors/me/qr')
+      .set('Authorization', `Bearer ${doctorToken}`)
+      .attach('qr', pngBuffer, 'test_qr.png');
+
+    expect(uploadRes.status).toBe(200);
+    expect(uploadRes.body).toHaveProperty('qrUrl');
+    const qrUrl = uploadRes.body.qrUrl;
+    expect(qrUrl).toMatch(/^\/uploads\/qr\//);
+
+    // Verify static serving at /uploads
+    const staticRes = await request(app).get(qrUrl);
+    expect(staticRes.status).toBe(200);
+    expect(staticRes.headers['content-type']).toContain('image');
+
+    // Verify static serving at /api/uploads
+    const apiStaticRes = await request(app).get(`/api${qrUrl}`);
+    expect(apiStaticRes.status).toBe(200);
+    expect(apiStaticRes.headers['content-type']).toContain('image');
+
+    // Verify GET /api/auth/me returns payment_qr_url
+    const meRes = await request(app)
+      .get('/api/auth/me')
+      .set('Authorization', `Bearer ${doctorToken}`);
+    expect(meRes.status).toBe(200);
+    expect(meRes.body.user.profile.payment_qr_url).toBe(qrUrl);
+
+    // Verify doctor list includes payment_qr_url for this doctor
+    const docsRes = await request(app).get('/api/doctors');
+    expect(docsRes.status).toBe(200);
+    const docEntry = docsRes.body.doctors.find(d => d.id === doctorId);
+    expect(docEntry.payment_qr_url).toBe(qrUrl);
+
+    // Verify delete QR removes the file and clears database record
+    const deleteRes = await request(app)
+      .delete('/api/doctors/me/qr')
+      .set('Authorization', `Bearer ${doctorToken}`);
+    expect(deleteRes.status).toBe(200);
+
+    const meAfterDelete = await request(app)
+      .get('/api/auth/me')
+      .set('Authorization', `Bearer ${doctorToken}`);
+    expect(meAfterDelete.body.user.profile.payment_qr_url).toBeNull();
+  });
 });

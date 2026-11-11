@@ -56,8 +56,11 @@ router.post('/me/qr', authenticateToken, requireRole('doctor'), qrUpload.single(
     const existing = await db.query('SELECT payment_qr_url FROM doctor_profiles WHERE user_id=$1', [doctorId]);
     const oldUrl = existing.rows[0]?.payment_qr_url;
     if (oldUrl) {
-      const oldPath = path.join(__dirname, '../../', oldUrl);
-      if (fs.existsSync(oldPath)) fs.unlinkSync(oldPath);
+      const cleanRel = oldUrl.replace(/^\/+/, '');
+      const oldPath = path.join(__dirname, '../../', cleanRel);
+      if (fs.existsSync(oldPath)) {
+        try { fs.unlinkSync(oldPath); } catch (e) { /* ignore cleanup error */ }
+      }
     }
 
     await db.query('UPDATE doctor_profiles SET payment_qr_url=$1 WHERE user_id=$2', [qrUrl, doctorId]);
@@ -88,8 +91,11 @@ router.delete('/me/qr', authenticateToken, requireRole('doctor'), async (req, re
     const resDb = await db.query('SELECT payment_qr_url FROM doctor_profiles WHERE user_id=$1', [doctorId]);
     const qrUrl = resDb.rows[0]?.payment_qr_url;
     if (qrUrl) {
-      const filePath = path.join(__dirname, '../../', qrUrl);
-      if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
+      const cleanRel = qrUrl.replace(/^\/+/, '');
+      const filePath = path.join(__dirname, '../../', cleanRel);
+      if (fs.existsSync(filePath)) {
+        try { fs.unlinkSync(filePath); } catch (e) { /* ignore cleanup error */ }
+      }
     }
     await db.query('UPDATE doctor_profiles SET payment_qr_url=NULL WHERE user_id=$1', [doctorId]);
     return res.json({ message: 'QR code removed.' });
