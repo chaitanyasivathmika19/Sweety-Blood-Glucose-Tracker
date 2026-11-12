@@ -22,6 +22,11 @@ The repository includes a root `render.yaml` Blueprint specification. To deploy 
    - `sweety-frontend` static site
 5. Click **Apply**.
 
+The backend builds from the repository root so it can read the single canonical
+`database/schema.sql` file. Its build command installs only `server` dependencies.
+The Blueprint supplies the public HTTPS URLs between the frontend and backend.
+Demo data is not inserted automatically; seeding requires `SEED_DEMO_DATA=true`.
+
 ---
 
 ## 2. Manual Step-by-Step Deployment
@@ -40,17 +45,18 @@ If deploying individual services manually:
 1. Go to **New +** -> **Web Service**.
 2. Connect `Sweety-Blood-Glucose-Tracker`.
 3. Settings:
-   - **Root Directory:** `server`
+   - **Root Directory:** leave blank (repository root; required for the shared schema file)
    - **Environment:** `Node`
-   - **Build Command:** `npm install`
-   - **Start Command:** `node src/server.js`
+   - **Build Command:** `npm ci --prefix server`
+   - **Start Command:** `node server/src/server.js`
    - **Health Check Path:** `/api/health`
 4. Environment Variables:
    - `NODE_ENV`: `production`
-   - `PORT`: `5000`
+   - `PORT`: use Render's provided value (the server binds to `0.0.0.0`)
    - `DATABASE_URL`: *(paste the Internal Database URL from step A)*
    - `JWT_SECRET`: *(enter any secure random string)*
-   - `FRONTEND_URL`: `https://your-frontend-name.onrender.com`
+   - `FRONTEND_URL`: `https://your-frontend-name.onrender.com` (public HTTPS URL)
+   - `SEED_DEMO_DATA`: leave unset or `false`; set to `true` only for an intentional demo database
 5. Click **Create Web Service**.
 
 ### C. Deploy Frontend Static Site
@@ -61,7 +67,7 @@ If deploying individual services manually:
    - **Build Command:** `npm install && npm run build`
    - **Publish Directory:** `dist`
 4. Environment Variables:
-   - `VITE_API_BASE_URL`: `https://your-backend-name.onrender.com/api`
+   - `VITE_API_BASE_URL`: `https://your-backend-name.onrender.com` (the app appends `/api`)
 5. Rewrites / Redirects:
    - Add a rewrite rule:
      - **Source:** `/*`

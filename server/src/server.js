@@ -4,6 +4,7 @@ require('dotenv').config({ path: path.resolve(__dirname, '../../.env') });
 const app = require('./app');
 const db = require('./database/db');
 const { seed } = require('./database/seed');
+const { shouldSeedDemoData } = require('./database/config');
 const { startScheduler } = require('./services/scheduler');
 
 const PORT = process.env.PORT || 5000;
@@ -13,9 +14,9 @@ async function bootstrap() {
     console.log('Initializing database connection...');
     await db.initDatabase();
 
-    // Check if seeding is needed
+    // Demo data is never added unless explicitly opted in via SEED_DEMO_DATA=true.
     const userCountRes = await db.query('SELECT COUNT(*) as count FROM users');
-    if (parseInt(userCountRes.rows[0].count, 10) === 0) {
+    if (shouldSeedDemoData(process.env.SEED_DEMO_DATA, userCountRes.rows[0].count)) {
       console.log('Database empty. Running seed script...');
       await seed();
     } else {

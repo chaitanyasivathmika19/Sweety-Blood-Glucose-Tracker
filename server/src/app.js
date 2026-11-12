@@ -3,6 +3,7 @@ const cors = require('cors');
 const cookieParser = require('cookie-parser');
 const path = require('path');
 const db = require('./database/db');
+const { getProductionFrontendOrigin } = require('./database/config');
 
 const authRouter = require('./routes/auth');
 const readingsRouter = require('./routes/readings');
@@ -14,21 +15,19 @@ const notificationsRouter = require('./routes/notifications');
 const app = express();
 
 // Allowed origins
-const allowedOrigins = [
-  process.env.FRONTEND_URL,
-  'http://localhost:5173',
-  'http://localhost:3000',
-  'http://127.0.0.1:5173'
-].filter(Boolean);
-
+const isProduction = process.env.NODE_ENV === 'production';
+const productionFrontendOrigin = getProductionFrontendOrigin({
+  nodeEnv: process.env.NODE_ENV,
+  frontendUrl: process.env.FRONTEND_URL
+});
 app.use(cors({
   origin: (origin, callback) => {
     // allow requests with no origin (like mobile apps, curl, server-to-server)
     if (!origin) return callback(null, true);
-    if (allowedOrigins.indexOf(origin) !== -1 || process.env.NODE_ENV !== 'production') {
+    if (!isProduction || origin === productionFrontendOrigin) {
       return callback(null, true);
     }
-    return callback(null, true); // Allow all during development & deployment verification
+    return callback(new Error('Origin is not allowed by CORS.'));
   },
   credentials: true
 }));

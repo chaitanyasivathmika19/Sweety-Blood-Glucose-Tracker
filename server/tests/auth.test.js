@@ -39,6 +39,8 @@ describe('Authentication API Tests', () => {
 
     expect(res.status).toBe(400);
     expect(res.body.error).toBe('An account with this email already exists.');
+    const countRes = await db.query('SELECT COUNT(*) AS count FROM users WHERE email = $1', [testEmail]);
+    expect(Number(countRes.rows[0].count)).toBe(1);
   });
 
   it('should reject registration with invalid email format', async () => {
